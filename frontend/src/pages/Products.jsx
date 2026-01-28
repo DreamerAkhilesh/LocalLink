@@ -73,7 +73,7 @@ const AddToCartButton = ({ product }) => {
  * Browse and search products
  */
 const Products = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
