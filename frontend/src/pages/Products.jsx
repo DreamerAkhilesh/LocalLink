@@ -1,7 +1,72 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useCart } from '../context/CartContext';
 import api from '../services/api';
+
+/**
+ * Add to Cart Button Component
+ */
+const AddToCartButton = ({ product }) => {
+  const { addToCart, isInCart, getItemQuantity, error, clearError } = useCart();
+  const [isAdding, setIsAdding] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+
+  const handleAddToCart = async () => {
+    setIsAdding(true);
+    clearError();
+    
+    const success = addToCart(product, 1);
+    
+    if (success) {
+      setShowSuccess(true);
+      setTimeout(() => setShowSuccess(false), 2000);
+    }
+    
+    setIsAdding(false);
+  };
+
+  const inCart = isInCart(product._id);
+  const quantity = getItemQuantity(product._id);
+
+  if (showSuccess) {
+    return (
+      <button className="bg-green-600 text-white py-2 px-3 rounded-md text-sm flex items-center">
+        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+        </svg>
+        Added!
+      </button>
+    );
+  }
+
+  return (
+    <button
+      onClick={handleAddToCart}
+      disabled={isAdding || product.stock === 0}
+      className={`py-2 px-3 rounded-md transition-colors text-sm ${
+        product.stock === 0
+          ? 'bg-gray-400 text-white cursor-not-allowed'
+          : inCart
+          ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
+          : 'bg-secondary-600 hover:bg-secondary-700 text-white'
+      }`}
+    >
+      {isAdding ? (
+        <div className="flex items-center">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-1"></div>
+          Adding...
+        </div>
+      ) : product.stock === 0 ? (
+        'Out of Stock'
+      ) : inCart ? (
+        `In Cart (${quantity})`
+      ) : (
+        'Add to Cart'
+      )}
+    </button>
+  );
+};
 
 /**
  * Products Page Component
@@ -293,10 +358,8 @@ const Products = () => {
                     >
                       View Details
                     </Link>
-                    {isAuthenticated && (
-                      <button className="bg-secondary-600 text-white py-2 px-3 rounded-md hover:bg-secondary-700 transition-colors text-sm">
-                        Add to Cart
-                      </button>
+                    {isAuthenticated && user?.role === 'customer' && (
+                      <AddToCartButton product={product} />
                     )}
                   </div>
                 </div>
