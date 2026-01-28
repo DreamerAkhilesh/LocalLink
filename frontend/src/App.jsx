@@ -18,6 +18,7 @@ import Services from './pages/Services';
 import Orders from './pages/Orders';
 import Bookings from './pages/Bookings';
 import Profile from './pages/Profile';
+import Checkout from './pages/Checkout';
 
 /**
  * Main App Component
@@ -44,6 +45,11 @@ function App() {
                 <Route path="/dashboard" element={
                   <ProtectedRoute>
                     <Dashboard />
+                  </ProtectedRoute>
+                } />
+                <Route path="/checkout" element={
+                  <ProtectedRoute>
+                    <Checkout />
                   </ProtectedRoute>
                 } />
                 <Route path="/orders" element={
