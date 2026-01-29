@@ -74,6 +74,12 @@ const authenticate = async (req, res, next) => {
  */
 const authorize = (...roles) => {
   return (req, res, next) => {
+    console.log('🔐 Authorization check:', {
+      userExists: !!req.user,
+      userRole: req.user?.role,
+      requiredRoles: roles
+    });
+    
     if (!req.user) {
       return res.status(401).json({
         success: false,
