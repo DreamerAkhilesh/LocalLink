@@ -98,7 +98,14 @@ const getProduct = async (req, res) => {
       });
     }
 
-    if (!product.isActive) {
+    console.log('🔍 Product check:', {
+      id: product._id,
+      isAvailable: product.isAvailable,
+      status: product.status,
+      stock: product.stock
+    });
+    
+    if (!product.isAvailable || product.status !== 'active') {
       return res.status(404).json({
         success: false,
         message: 'Product is not available'
