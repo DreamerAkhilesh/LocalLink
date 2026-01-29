@@ -1,5 +1,6 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const VendorProfile = require('../models/VendorProfile');
 const { validationResult } = require('express-validator');
 
 /**
@@ -9,6 +10,8 @@ const { validationResult } = require('express-validator');
  */
 const createOrder = async (req, res) => {
   try {
+    console.log('🛒 Creating order with data:', JSON.stringify(req.body, null, 2));
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -20,12 +23,19 @@ const createOrder = async (req, res) => {
 
     const { items, deliveryType, paymentMethod, deliveryAddress, notes } = req.body;
 
-    // Validate and calculate order total
-    let calculatedTotal = 0;
-    const orderItems = [];
-
+    // Group items by vendor
+    const itemsByVendor = {};
     for (const item of items) {
       const product = await Product.findById(item.product).populate('vendor');
+      
+      console.log('Processing item:', {
+        productId: item.product,
+        found: !!product,
+        isAvailable: product?.isAvailable,
+        status: product?.status,
+        stock: product?.stock,
+        requestedQuantity: item.quantity
+      });
       
       if (!product) {
         return res.status(404).json({
@@ -34,7 +44,7 @@ const createOrder = async (req, res) => {
         });
       }
 
-      if (!product.isActive) {
+      if (!product.isAvailable || product.status !== 'active') {
         return res.status(400).json({
           success: false,
           message: `Product ${product.name} is no longer available`
@@ -48,10 +58,17 @@ const createOrder = async (req, res) => {
         });
       }
 
-      const itemTotal = product.price * item.quantity;
-      calculatedTotal += itemTotal;
+      const vendorId = product.vendor._id.toString();
+      if (!itemsByVendor[vendorId]) {
+        itemsByVendor[vendorId] = {
+          vendor: product.vendor,
+          items: [],
+          total: 0
+        };
+      }
 
-      orderItems.push({
+      const itemTotal = product.price * item.quantity;
+      itemsByVendor[vendorId].items.push({
         product: product._id,
         vendor: product.vendor._id,
         name: product.name,
@@ -60,43 +77,85 @@ const createOrder = async (req, res) => {
         unit: product.unit,
         total: itemTotal
       });
+      itemsByVendor[vendorId].total += itemTotal;
 
       // Update product stock
       product.stock -= item.quantity;
       await product.save();
     }
 
-    // Create order
-    const orderData = {
-      customer: req.user.id,
-      items: orderItems,
-      totalAmount: calculatedTotal,
-      deliveryType,
-      paymentMethod,
-      status: 'pending',
-      paymentStatus: 'unpaid',
-      notes: notes || ''
-    };
+    console.log('Items by vendor:', Object.keys(itemsByVendor));
+    
+    // Create separate orders for each vendor
+    const createdOrders = [];
+    for (const [vendorId, vendorData] of Object.entries(itemsByVendor)) {
+      console.log('Processing vendor order creation...');
+      
+      console.log('Creating order for vendor:', {
+        vendorId,
+        vendorData: {
+          vendor: vendorData.vendor._id,
+          itemsCount: vendorData.items.length,
+          total: vendorData.total
+        }
+      });
+      
+      try {
+        // Generate order number manually
+        console.log('Generating order number...');
+        const orderCount = await Order.countDocuments();
+        console.log('Order count:', orderCount);
+        const orderNumber = `ORD${Date.now()}${String(orderCount + 1).padStart(4, '0')}`;
+        console.log('Generated order number:', orderNumber);
+      
+        const orderData = {
+          orderNumber,
+          customer: req.user.id,
+          vendor: vendorId,
+          items: vendorData.items,
+          subtotal: vendorData.total,
+          totalAmount: vendorData.total,
+          deliveryType,
+          paymentMethod,
+          status: 'pending',
+          paymentStatus: 'unpaid',
+          statusHistory: [{
+            status: 'pending',
+            timestamp: new Date(),
+            note: 'Order placed'
+          }],
+          notes: notes || ''
+        };
 
-    // Add delivery address if home delivery
-    if (deliveryType === 'home-delivery' && deliveryAddress) {
-      orderData.deliveryAddress = deliveryAddress;
+        // Add delivery address if home delivery
+        if (deliveryType === 'home-delivery' && deliveryAddress) {
+          orderData.deliveryAddress = deliveryAddress;
+        }
+
+        console.log('Order data before creation:', JSON.stringify(orderData, null, 2));
+        
+        const order = new Order(orderData);
+        await order.save();
+
+        // Populate order for response
+        await order.populate([
+          { path: 'customer', select: 'name email phone' },
+          { path: 'vendor', select: 'businessName phone email address' },
+          { path: 'items.product', select: 'name images' }
+        ]);
+
+        createdOrders.push(order);
+        
+      } catch (error) {
+        console.error('Error creating individual order:', error);
+        throw error;
+      }
     }
-
-    const order = new Order(orderData);
-    await order.save();
-
-    // Populate order for response
-    await order.populate([
-      { path: 'customer', select: 'name email phone' },
-      { path: 'items.product', select: 'name images' },
-      { path: 'items.vendor', select: 'businessName phone email address' }
-    ]);
 
     res.status(201).json({
       success: true,
-      message: 'Order placed successfully',
-      data: { order }
+      message: `${createdOrders.length} order(s) placed successfully`,
+      data: { orders: createdOrders }
     });
 
   } catch (error) {
@@ -138,8 +197,9 @@ const getCustomerOrders = async (req, res) => {
 
     const orders = await Order.find(filter)
       .populate([
-        { path: 'items.product', select: 'name images' },
-        { path: 'items.vendor', select: 'businessName phone email address' }
+        { path: 'customer', select: 'name email phone' },
+        { path: 'vendor', select: 'businessName phone email address' },
+        { path: 'items.product', select: 'name images' }
       ])
       .sort(sort)
       .skip(skip)
@@ -177,6 +237,15 @@ const getCustomerOrders = async (req, res) => {
  */
 const getVendorOrders = async (req, res) => {
   try {
+    // Get vendor profile
+    const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
+    if (!vendorProfile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
     const {
       status,
       page = 1,
@@ -185,8 +254,8 @@ const getVendorOrders = async (req, res) => {
       sortOrder = 'desc'
     } = req.query;
 
-    // Build filter - find orders that contain items from this vendor
-    const filter = { 'items.vendor': req.user.vendorProfile };
+    // Build filter - find orders for this vendor
+    const filter = { vendor: vendorProfile._id };
     if (status) {
       filter.status = status;
     }
@@ -201,6 +270,7 @@ const getVendorOrders = async (req, res) => {
     const orders = await Order.find(filter)
       .populate([
         { path: 'customer', select: 'name email phone address' },
+        { path: 'vendor', select: 'businessName phone email address' },
         { path: 'items.product', select: 'name images' }
       ])
       .sort(sort)
@@ -242,8 +312,8 @@ const getOrder = async (req, res) => {
     const order = await Order.findById(req.params.id)
       .populate([
         { path: 'customer', select: 'name email phone address' },
-        { path: 'items.product', select: 'name images description' },
-        { path: 'items.vendor', select: 'businessName phone email address' }
+        { path: 'vendor', select: 'businessName phone email address' },
+        { path: 'items.product', select: 'name images description' }
       ]);
 
     if (!order) {
@@ -255,8 +325,13 @@ const getOrder = async (req, res) => {
 
     // Check if user has access to this order
     const isCustomer = order.customer._id.toString() === req.user.id;
-    const isVendor = req.user.role === 'vendor' && 
-      order.items.some(item => item.vendor._id.toString() === req.user.vendorProfile);
+    let isVendor = false;
+    
+    if (req.user.role === 'vendor') {
+      const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
+      isVendor = vendorProfile && 
+        order.vendor._id.toString() === vendorProfile._id.toString();
+    }
 
     if (!isCustomer && !isVendor) {
       return res.status(403).json({
@@ -296,6 +371,15 @@ const updateOrderStatus = async (req, res) => {
       });
     }
 
+    // Get vendor profile
+    const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
+    if (!vendorProfile) {
+      return res.status(400).json({
+        success: false,
+        message: 'Vendor profile not found'
+      });
+    }
+
     const order = await Order.findById(req.params.id);
 
     if (!order) {
@@ -306,9 +390,7 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // Check if vendor has access to this order
-    const hasAccess = order.items.some(item => 
-      item.vendor.toString() === req.user.vendorProfile
-    );
+    const hasAccess = order.vendor.toString() === vendorProfile._id.toString();
 
     if (!hasAccess) {
       return res.status(403).json({
@@ -329,8 +411,8 @@ const updateOrderStatus = async (req, res) => {
 
     await order.populate([
       { path: 'customer', select: 'name email phone' },
-      { path: 'items.product', select: 'name images' },
-      { path: 'items.vendor', select: 'businessName phone email' }
+      { path: 'vendor', select: 'businessName phone email' },
+      { path: 'items.product', select: 'name images' }
     ]);
 
     res.json({
@@ -366,8 +448,13 @@ const cancelOrder = async (req, res) => {
 
     // Check if user has access to cancel this order
     const isCustomer = order.customer.toString() === req.user.id;
-    const isVendor = req.user.role === 'vendor' && 
-      order.items.some(item => item.vendor.toString() === req.user.vendorProfile);
+    let isVendor = false;
+    
+    if (req.user.role === 'vendor') {
+      const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
+      isVendor = vendorProfile && 
+        order.vendor.toString() === vendorProfile._id.toString();
+    }
 
     if (!isCustomer && !isVendor) {
       return res.status(403).json({
