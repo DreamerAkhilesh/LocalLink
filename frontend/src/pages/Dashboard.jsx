@@ -23,16 +23,18 @@ const Dashboard = () => {
       
       if (user?.role === 'vendor') {
         // Fetch vendor stats and recent products/services
-        const [productsRes, servicesRes] = await Promise.all([
+        const [productsRes, servicesRes, ordersRes, bookingsRes] = await Promise.all([
           api.get('/products/vendor/my-products?limit=5'),
-          api.get('/services/vendor/my-services?limit=5')
+          api.get('/services/vendor/my-services?limit=5'),
+          api.get('/orders/vendor?limit=5'),
+          api.get('/bookings/vendor/stats')
         ]);
         
         setStats({
-          totalProducts: productsRes.data.data.pagination.total,
-          totalServices: servicesRes.data.data.pagination.total,
-          totalOrders: 0, // TODO: Implement orders
-          totalBookings: 0 // TODO: Implement bookings
+          totalProducts: productsRes.data.data.pagination?.total || 0,
+          totalServices: servicesRes.data.data.pagination?.total || 0,
+          totalOrders: ordersRes.data.data.pagination?.total || 0,
+          totalBookings: bookingsRes.data.data?.totalBookings || 0
         });
         
         setRecentItems([
@@ -41,15 +43,35 @@ const Dashboard = () => {
         ]);
       } else {
         // Customer dashboard - recent orders and bookings
+        const [ordersRes, bookingsRes] = await Promise.all([
+          api.get('/orders?limit=5'),
+          api.get('/bookings?limit=5')
+        ]);
+        
+        // Calculate total spent from orders
+        const totalSpent = ordersRes.data.data.orders?.reduce((sum, order) => sum + order.totalAmount, 0) || 0;
+        
         setStats({
-          totalOrders: 0,
-          totalBookings: 0,
-          totalSpent: 0
+          totalOrders: ordersRes.data.data.pagination?.total || 0,
+          totalBookings: bookingsRes.data.data.pagination?.total || 0,
+          totalSpent: totalSpent
         });
-        setRecentItems([]);
+        
+        setRecentItems([
+          ...ordersRes.data.data.orders.map(o => ({ ...o, type: 'order' })),
+          ...bookingsRes.data.data.bookings.map(b => ({ ...b, type: 'booking' }))
+        ]);
       }
     } catch (error) {
       console.error('Dashboard fetch error:', error);
+      // Set default stats on error
+      setStats({
+        totalProducts: 0,
+        totalServices: 0,
+        totalOrders: 0,
+        totalBookings: 0,
+        totalSpent: 0
+      });
     } finally {
       setLoading(false);
     }
