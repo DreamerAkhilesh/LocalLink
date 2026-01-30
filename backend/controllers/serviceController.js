@@ -22,7 +22,7 @@ const getServices = async (req, res) => {
     } = req.query;
 
     // Build filter object
-    const filter = { isActive: true };
+    const filter = { isAvailable: true, status: 'active' };
     
     if (category) {
       filter.category = category;
@@ -30,16 +30,16 @@ const getServices = async (req, res) => {
     
     if (search) {
       filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
+        { title: { $regex: search, $options: 'i' } },
         { description: { $regex: search, $options: 'i' } },
         { tags: { $in: [new RegExp(search, 'i')] } }
       ];
     }
     
     if (minPrice || maxPrice) {
-      filter.price = {};
-      if (minPrice) filter.price.$gte = parseFloat(minPrice);
-      if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
+      filter.basePrice = {};
+      if (minPrice) filter.basePrice.$gte = parseFloat(minPrice);
+      if (maxPrice) filter.basePrice.$lte = parseFloat(maxPrice);
     }
 
     // Build sort object
@@ -51,7 +51,7 @@ const getServices = async (req, res) => {
 
     // Get services with vendor info
     const services = await Service.find(filter)
-      .populate('vendor', 'name businessName businessType address')
+      .populate('provider', 'businessName businessType address')
       .sort(sort)
       .skip(skip)
       .limit(parseInt(limit));
@@ -125,6 +125,8 @@ const getService = async (req, res) => {
  */
 const createService = async (req, res) => {
   try {
+    console.log('🛠️ Creating service with data:', JSON.stringify(req.body, null, 2));
+    
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
       return res.status(400).json({
@@ -136,6 +138,9 @@ const createService = async (req, res) => {
 
     // Get vendor profile
     const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
+    console.log('👤 User ID:', req.user.id);
+    console.log('🏪 Vendor profile found:', vendorProfile ? vendorProfile.businessName : 'None');
+    
     if (!vendorProfile) {
       return res.status(400).json({
         success: false,
@@ -145,14 +150,16 @@ const createService = async (req, res) => {
 
     const serviceData = {
       ...req.body,
-      vendor: vendorProfile._id
+      provider: vendorProfile._id
     };
+    
+    console.log('📝 Service data to save:', JSON.stringify(serviceData, null, 2));
 
     const service = new Service(serviceData);
     await service.save();
 
     // Populate vendor info for response
-    await service.populate('vendor', 'businessName businessType address');
+    await service.populate('provider', 'businessName businessType address');
 
     res.status(201).json({
       success: true,
