@@ -1,17 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import ServiceBookingModal from '../components/ServiceBookingModal';
 
 /**
  * Services Page Component
  * Browse and search services
  */
 const Services = () => {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [selectedService, setSelectedService] = useState(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [filters, setFilters] = useState({
     search: '',
     category: '',
@@ -40,7 +43,7 @@ const Services = () => {
   ];
 
   // Fetch services
-  const fetchServices = async (page = 1) => {
+  const fetchServices = useCallback(async (page = 1) => {
     try {
       setLoading(true);
       const params = new URLSearchParams({
@@ -66,11 +69,11 @@ const Services = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [filters]);
 
   useEffect(() => {
     fetchServices();
-  }, [filters]);
+  }, [fetchServices]);
 
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({
@@ -93,6 +96,25 @@ const Services = () => {
       sortBy: 'createdAt',
       sortOrder: 'desc'
     });
+  };
+
+  const handleBookService = (service) => {
+    if (user?.role !== 'customer') {
+      alert('Only customers can book services. Please login as a customer.');
+      return;
+    }
+    setSelectedService(service);
+    setIsBookingModalOpen(true);
+  };
+
+  const handleBookingSuccess = (booking) => {
+    console.log('Booking created:', booking);
+    // Optionally refresh services or show success message
+  };
+
+  const closeBookingModal = () => {
+    setIsBookingModalOpen(false);
+    setSelectedService(null);
   };
 
   const formatPrice = (price) => {
@@ -314,7 +336,10 @@ const Services = () => {
                       View Details
                     </Link>
                     {isAuthenticated && (
-                      <button className="bg-secondary-600 text-white py-2 px-3 rounded-md hover:bg-secondary-700 transition-colors text-sm">
+                      <button 
+                        onClick={() => handleBookService(service)}
+                        className="bg-secondary-600 text-white py-2 px-3 rounded-md hover:bg-secondary-700 transition-colors text-sm"
+                      >
                         Book Now
                       </button>
                     )}
@@ -358,6 +383,14 @@ const Services = () => {
           <p className="text-gray-500">Try adjusting your search filters or check back later.</p>
         </div>
       )}
+      
+      {/* Service Booking Modal */}
+      <ServiceBookingModal
+        service={selectedService}
+        isOpen={isBookingModalOpen}
+        onClose={closeBookingModal}
+        onBookingSuccess={handleBookingSuccess}
+      />
     </div>
   );
 };
