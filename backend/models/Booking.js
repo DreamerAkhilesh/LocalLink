@@ -1,115 +1,117 @@
 const mongoose = require('mongoose');
 
-/**
- * Booking Schema - For service appointments
- * Handles service booking lifecycle from request to completion
- */
 const bookingSchema = new mongoose.Schema({
-  // Booking Identification
+  // Booking identification
   bookingNumber: {
     type: String,
-    unique: true,
-    required: true
+    required: true,
+    unique: true
   },
   
-  // Customer Information
+  // Relationships
   customer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  
-  // Service Provider Information
-  serviceProvider: {
+  vendor: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'VendorProfile',
     required: true
   },
-  
-  // Service Information
   service: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Service',
     required: true
   },
   
-  // Booking Details
-  serviceTitle: {
-    type: String,
-    required: true
-  },
-  serviceDescription: String,
-  
-  // Pricing
-  basePrice: {
-    type: Number,
-    required: true,
-    min: [0, 'Base price cannot be negative']
-  },
-  additionalCharges: {
-    type: Number,
-    default: 0,
-    min: [0, 'Additional charges cannot be negative']
-  },
-  discount: {
-    type: Number,
-    default: 0,
-    min: [0, 'Discount cannot be negative']
-  },
-  totalAmount: {
-    type: Number,
-    required: true,
-    min: [0, 'Total amount cannot be negative']
+  // Service details (snapshot at booking time)
+  serviceDetails: {
+    name: { type: String, required: true },
+    description: String,
+    price: { type: Number, required: true },
+    duration: Number, // in minutes
+    category: String
   },
   
-  // Scheduling
+  // Booking scheduling
   scheduledDate: {
     type: Date,
     required: true
   },
   scheduledTime: {
     type: String,
-    required: true,
-    match: [/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, 'Please enter valid time in HH:MM format']
+    required: true // Format: "HH:MM" (24-hour format)
   },
-  estimatedDuration: {
-    type: Number, // in minutes
+  estimatedEndTime: {
+    type: String // Calculated based on duration
+  },
+  
+  // Booking details
+  totalAmount: {
+    type: Number,
     required: true
   },
   
-  // Service Address
-  serviceAddress: {
-    name: {
-      type: String,
-      required: true
-    },
-    phone: {
-      type: String,
-      required: true
-    },
-    street: {
-      type: String,
-      required: true
-    },
-    city: {
-      type: String,
-      required: true
-    },
-    pincode: {
-      type: String,
-      required: true
-    },
-    landmark: String
+  // Customer information
+  customerInfo: {
+    name: { type: String, required: true },
+    phone: { type: String, required: true },
+    email: { type: String, required: true },
+    address: {
+      street: String,
+      city: String,
+      state: String,
+      pincode: String
+    }
   },
   
-  // Booking Status Management
+  // Booking location
+  serviceLocation: {
+    type: String,
+    enum: ['customer-location', 'vendor-location', 'online'],
+    required: true
+  },
+  
+  // Service address (if at customer location)
+  serviceAddress: {
+    street: String,
+    city: String,
+    state: String,
+    pincode: String,
+    landmark: String,
+    instructions: String
+  },
+  
+  // Payment information
+  paymentMethod: {
+    type: String,
+    enum: ['cash', 'online', 'pay-at-service'],
+    required: true
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['unpaid', 'paid', 'partially-paid', 'refunded'],
+    default: 'unpaid'
+  },
+  
+  // Booking status
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'in-progress', 'completed', 'cancelled', 'rescheduled'],
+    enum: [
+      'pending',        // Just booked, awaiting vendor confirmation
+      'confirmed',      // Vendor confirmed the booking
+      'rescheduled',    // Booking time changed
+      'in-progress',    // Service is currently being provided
+      'completed',      // Service completed successfully
+      'cancelled',      // Cancelled by customer or vendor
+      'no-show',        // Customer didn't show up
+      'refunded'        // Payment refunded
+    ],
     default: 'pending'
   },
   
-  // Status Timeline
+  // Status tracking
   statusHistory: [{
     status: {
       type: String,
@@ -121,185 +123,136 @@ const bookingSchema = new mongoose.Schema({
     },
     note: String,
     updatedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    }
-  }],
-  
-  // Payment Information
-  paymentMethod: {
-    type: String,
-    enum: ['cash-on-service', 'pay-at-shop'],
-    required: true
-  },
-  paymentStatus: {
-    type: String,
-    enum: ['unpaid', 'paid'],
-    default: 'unpaid'
-  },
-  
-  // Service Requirements
-  requirements: {
-    materialsNeeded: [{
-      item: String,
-      quantity: String,
-      providedBy: {
-        type: String,
-        enum: ['customer', 'provider'],
-        default: 'provider'
-      }
-    }],
-    specialInstructions: {
       type: String,
-      maxlength: [1000, 'Special instructions cannot exceed 1000 characters']
-    },
-    accessInstructions: {
-      type: String,
-      maxlength: [500, 'Access instructions cannot exceed 500 characters']
-    }
-  },
-  
-  // Timing
-  bookingDate: {
-    type: Date,
-    default: Date.now
-  },
-  actualStartTime: Date,
-  actualEndTime: Date,
-  
-  // Rescheduling
-  rescheduleHistory: [{
-    originalDate: Date,
-    originalTime: String,
-    newDate: Date,
-    newTime: String,
-    reason: String,
-    requestedBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: 'User'
-    },
-    timestamp: {
-      type: Date,
-      default: Date.now
+      enum: ['customer', 'vendor', 'system']
     }
   }],
   
-  // Cancellation
-  cancellationReason: String,
-  cancelledBy: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
-  },
-  cancelledAt: Date,
+  // Additional information
+  specialRequests: String,
+  notes: String,
   
-  // Service Completion
-  workDescription: {
-    type: String,
-    maxlength: [1000, 'Work description cannot exceed 1000 characters']
-  },
-  beforeImages: [{
-    type: String
-  }],
-  afterImages: [{
-    type: String
-  }],
+  // Vendor notes (private)
+  vendorNotes: String,
   
-  // Review & Rating
-  isReviewed: {
-    type: Boolean,
-    default: false
-  },
+  // Service completion details
+  serviceStartTime: Date,
+  serviceEndTime: Date,
+  actualDuration: Number, // in minutes
+  
+  // Rating and feedback (after completion)
   rating: {
     type: Number,
     min: 1,
     max: 5
   },
-  review: {
-    type: String,
-    maxlength: [1000, 'Review cannot exceed 1000 characters']
-  }
+  feedback: String,
+  vendorResponse: String,
+  
+  // Timestamps
+  bookingDate: {
+    type: Date,
+    default: Date.now
+  },
+  updatedAt: {
+    type: Date,
+    default: Date.now
+  },
+  completedAt: Date,
+  cancelledAt: Date
 }, {
   timestamps: true
 });
 
-// Indexes for better performance
-bookingSchema.index({ customer: 1 });
-bookingSchema.index({ serviceProvider: 1 });
+// Indexes for better query performance
+bookingSchema.index({ customer: 1, bookingDate: -1 });
+bookingSchema.index({ vendor: 1, scheduledDate: 1 });
 bookingSchema.index({ service: 1 });
-bookingSchema.index({ bookingNumber: 1 });
 bookingSchema.index({ status: 1 });
-bookingSchema.index({ scheduledDate: 1 });
-bookingSchema.index({ bookingDate: -1 });
-bookingSchema.index({ paymentStatus: 1 });
+bookingSchema.index({ bookingNumber: 1 });
+bookingSchema.index({ scheduledDate: 1, scheduledTime: 1 });
 
-// Generate booking number before saving
-bookingSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await mongoose.model('Booking').countDocuments();
-    this.bookingNumber = `BKG${Date.now()}${String(count + 1).padStart(4, '0')}`;
-    
-    // Add initial status to history
-    this.statusHistory.push({
-      status: this.status,
-      timestamp: new Date(),
-      note: 'Booking requested'
-    });
-  }
-  next();
-});
-
-// Calculate total amount before saving
+// Pre-save middleware to update timestamps
 bookingSchema.pre('save', function(next) {
-  this.totalAmount = this.basePrice + this.additionalCharges - this.discount;
+  this.updatedAt = Date.now();
+  
+  // Calculate estimated end time based on duration
+  if (this.scheduledTime && this.serviceDetails.duration) {
+    const [hours, minutes] = this.scheduledTime.split(':').map(Number);
+    const startMinutes = hours * 60 + minutes;
+    const endMinutes = startMinutes + this.serviceDetails.duration;
+    const endHours = Math.floor(endMinutes / 60);
+    const endMins = endMinutes % 60;
+    this.estimatedEndTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+  }
+  
   next();
 });
 
-// Method to update booking status
-bookingSchema.methods.updateStatus = function(newStatus, note, updatedBy) {
-  this.status = newStatus;
-  this.statusHistory.push({
-    status: newStatus,
-    timestamp: new Date(),
-    note: note,
-    updatedBy: updatedBy
-  });
-  
-  // Set timing based on status
-  if (newStatus === 'in-progress') {
-    this.actualStartTime = new Date();
-  } else if (newStatus === 'completed') {
-    this.actualEndTime = new Date();
-  }
-  
-  return this.save();
+// Static method to generate booking number
+bookingSchema.statics.generateBookingNumber = async function() {
+  const count = await this.countDocuments();
+  return `BKG${Date.now()}${String(count + 1).padStart(4, '0')}`;
 };
 
-// Method to reschedule booking
-bookingSchema.methods.reschedule = function(newDate, newTime, reason, requestedBy) {
-  // Add to reschedule history
-  this.rescheduleHistory.push({
-    originalDate: this.scheduledDate,
-    originalTime: this.scheduledTime,
-    newDate: newDate,
-    newTime: newTime,
-    reason: reason,
-    requestedBy: requestedBy
-  });
-  
-  // Update scheduled date and time
-  this.scheduledDate = newDate;
-  this.scheduledTime = newTime;
-  this.status = 'rescheduled';
-  
-  // Add to status history
+// Instance method to add status history
+bookingSchema.methods.addStatusHistory = function(status, note = '', updatedBy = 'system') {
   this.statusHistory.push({
-    status: 'rescheduled',
+    status,
     timestamp: new Date(),
-    note: `Rescheduled: ${reason}`,
-    updatedBy: requestedBy
+    note,
+    updatedBy
   });
   
-  return this.save();
+  // Update completion/cancellation timestamps
+  if (status === 'completed') {
+    this.completedAt = new Date();
+  } else if (status === 'cancelled') {
+    this.cancelledAt = new Date();
+  }
 };
+
+// Instance method to check if booking can be cancelled
+bookingSchema.methods.canBeCancelled = function() {
+  const nonCancellableStatuses = ['completed', 'cancelled', 'refunded', 'in-progress'];
+  return !nonCancellableStatuses.includes(this.status);
+};
+
+// Instance method to check if booking can be rescheduled
+bookingSchema.methods.canBeRescheduled = function() {
+  const nonReschedulableStatuses = ['completed', 'cancelled', 'refunded', 'in-progress'];
+  return !nonReschedulableStatuses.includes(this.status);
+};
+
+// Virtual for booking display name
+bookingSchema.virtual('displayName').get(function() {
+  return `${this.serviceDetails.name} - ${this.bookingNumber}`;
+});
+
+// Virtual for formatted scheduled datetime
+bookingSchema.virtual('scheduledDateTime').get(function() {
+  const date = new Date(this.scheduledDate);
+  const [hours, minutes] = this.scheduledTime.split(':');
+  date.setHours(parseInt(hours), parseInt(minutes));
+  return date;
+});
+
+// Virtual for time until service
+bookingSchema.virtual('timeUntilService').get(function() {
+  const now = new Date();
+  const scheduled = this.scheduledDateTime;
+  const diffMs = scheduled - now;
+  
+  if (diffMs < 0) return 'Past due';
+  
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffHours / 24);
+  
+  if (diffDays > 0) return `${diffDays} day(s)`;
+  if (diffHours > 0) return `${diffHours} hour(s)`;
+  
+  const diffMinutes = Math.floor(diffMs / (1000 * 60));
+  return `${diffMinutes} minute(s)`;
+});
 
 module.exports = mongoose.model('Booking', bookingSchema);
