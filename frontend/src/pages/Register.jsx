@@ -219,8 +219,10 @@ const Register = () => {
                   name="phone"
                   type="tel"
                   required
+                  maxLength={10}
                   value={formData.phone}
                   onChange={handleChange}
+                  placeholder="10-digit mobile number"
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
@@ -241,6 +243,7 @@ const Register = () => {
                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                 />
               </div>
+              <p className="mt-1 text-xs text-gray-500">Min 6 characters with uppercase, lowercase, and a number</p>
             </div>
             
             <div>
@@ -312,8 +315,10 @@ const Register = () => {
                       name="address.pincode"
                       type="text"
                       required
+                      maxLength={6}
                       value={formData.address.pincode}
                       onChange={handleChange}
+                      placeholder="6-digit pincode"
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
@@ -369,7 +374,14 @@ const Register = () => {
                       id="businessInfo.businessType"
                       name="businessInfo.businessType"
                       value={formData.businessInfo.businessType}
-                      onChange={handleChange}
+                      onChange={(e) => {
+                        handleChange(e);
+                        // Reset category when business type changes
+                        setFormData(prev => ({
+                          ...prev,
+                          businessInfo: { ...prev.businessInfo, businessType: e.target.value, category: '' }
+                        }));
+                      }}
                       className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
                     >
                       <option value="shop">Shop</option>
@@ -383,16 +395,38 @@ const Register = () => {
                     Category
                   </label>
                   <div className="mt-1">
-                    <input
+                    <select
                       id="businessInfo.category"
                       name="businessInfo.category"
-                      type="text"
                       required
                       value={formData.businessInfo.category}
                       onChange={handleChange}
-                      placeholder="e.g., grocery, electronics, plumbing"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                    >
+                      <option value="">Select a category</option>
+                      {formData.businessInfo.businessType === 'shop' ? (
+                        <>
+                          <option value="grocery">Grocery</option>
+                          <option value="clothing">Clothing</option>
+                          <option value="electronics">Electronics</option>
+                          <option value="pharmacy">Pharmacy</option>
+                          <option value="stationery">Stationery</option>
+                          <option value="bakery">Bakery</option>
+                          <option value="other-shop">Other Shop</option>
+                        </>
+                      ) : (
+                        <>
+                          <option value="plumber">Plumber</option>
+                          <option value="electrician">Electrician</option>
+                          <option value="carpenter">Carpenter</option>
+                          <option value="painter">Painter</option>
+                          <option value="cleaner">Cleaner</option>
+                          <option value="mechanic">Mechanic</option>
+                          <option value="tutor">Tutor</option>
+                          <option value="other-service">Other Service</option>
+                        </>
+                      )}
+                    </select>
                   </div>
                 </div>
                 

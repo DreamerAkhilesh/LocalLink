@@ -22,7 +22,6 @@ const Bookings = () => {
  * Display customer booking history and status
  */
 const CustomerBookings = () => {
-  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -33,7 +32,23 @@ const CustomerBookings = () => {
   });
 
   useEffect(() => {
-    fetchBookings();
+    const loadBookings = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.status !== 'all') params.append('status', filters.status);
+        params.append('sort', filters.sortBy === 'newest' ? '-bookingDate' : 'bookingDate');
+        const response = await api.get(`/bookings?${params.toString()}`);
+        setBookings(response.data.data.bookings || []);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching bookings:', err);
+        setError(err.response?.data?.message || 'Failed to fetch bookings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBookings();
   }, [filters]);
 
   const fetchBookings = async () => {
@@ -322,7 +337,6 @@ const CustomerBookings = () => {
  * Manage incoming bookings for vendors
  */
 const VendorBookings = () => {
-  const { user } = useAuth();
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -343,9 +357,26 @@ const VendorBookings = () => {
   });
 
   useEffect(() => {
-    fetchBookings();
+    const loadBookings = async () => {
+      try {
+        setLoading(true);
+        const params = new URLSearchParams();
+        if (filters.status !== 'all') params.append('status', filters.status);
+        if (filters.date) params.append('date', filters.date);
+        params.append('sort', filters.sortBy === 'newest' ? '-scheduledDate' : 'scheduledDate');
+        const response = await api.get(`/bookings/vendor?${params.toString()}`);
+        setBookings(response.data.data.bookings || []);
+        setError('');
+      } catch (err) {
+        console.error('Error fetching vendor bookings:', err);
+        setError(err.response?.data?.message || 'Failed to fetch bookings');
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadBookings();
     fetchStats();
-  }, [filters]);
+  }, [filters]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchBookings = async () => {
     try {

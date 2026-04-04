@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import React, { createContext, useContext, useReducer, useEffect, useCallback } from 'react';
 import { authService } from '../services/authService';
 
 /**
@@ -158,7 +158,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
   
   // Login function
-  const login = async (credentials) => {
+  const login = useCallback(async (credentials) => {
     try {
       dispatch({ type: AUTH_ACTIONS.LOGIN_START });
       const response = await authService.login(credentials);
@@ -175,10 +175,10 @@ export const AuthProvider = ({ children }) => {
       });
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
   
   // Register function
-  const register = async (userData) => {
+  const register = useCallback(async (userData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.REGISTER_START });
       const response = await authService.register(userData);
@@ -188,27 +188,31 @@ export const AuthProvider = ({ children }) => {
       });
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Registration failed';
+      // Show first validation error if available, otherwise generic message
+      const validationErrors = error.response?.data?.errors;
+      const errorMessage = validationErrors?.length
+        ? validationErrors[0].msg
+        : error.response?.data?.message || 'Registration failed';
       dispatch({
         type: AUTH_ACTIONS.REGISTER_FAILURE,
         payload: errorMessage
       });
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
   
   // Logout function
-  const logout = () => {
+  const logout = useCallback(() => {
     dispatch({ type: AUTH_ACTIONS.LOGOUT });
-  };
+  }, []);
   
   // Clear error function
-  const clearError = () => {
+  const clearError = useCallback(() => {
     dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
-  };
+  }, []);
   
   // Update profile function
-  const updateProfile = async (profileData) => {
+  const updateProfile = useCallback(async (profileData) => {
     try {
       const response = await authService.updateProfile(profileData);
       dispatch({
@@ -220,7 +224,7 @@ export const AuthProvider = ({ children }) => {
       const errorMessage = error.response?.data?.message || 'Profile update failed';
       return { success: false, error: errorMessage };
     }
-  };
+  }, []);
   
   const value = {
     ...state,
