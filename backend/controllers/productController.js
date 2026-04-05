@@ -31,7 +31,19 @@ const getProducts = async (req, res) => {
     }
 
     const filter = { isAvailable: true, status: 'active' };
-    if (vendorIds) filter.vendor = { $in: vendorIds };
+    // Only apply geo filter if we actually found nearby vendors
+    if (vendorIds && vendorIds.length > 0) filter.vendor = { $in: vendorIds };
+    // If geo query returned 0 vendors, return empty results
+    if (vendorIds && vendorIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          products: [],
+          pagination: { current: 1, pages: 0, total: 0, hasNext: false, hasPrev: false }
+        },
+        message: 'No vendors found in your area'
+      });
+    }
     if (category) filter.category = category;
     if (search) {
       filter.$or = [

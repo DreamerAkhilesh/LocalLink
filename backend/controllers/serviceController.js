@@ -30,7 +30,19 @@ const getServices = async (req, res) => {
     }
 
     const filter = { isAvailable: true, status: 'active' };
-    if (providerIds) filter.provider = { $in: providerIds };
+    // Only apply geo filter if we actually found nearby vendors
+    if (providerIds && providerIds.length > 0) filter.provider = { $in: providerIds };
+    // If geo query returned 0 vendors, return empty results
+    if (providerIds && providerIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          services: [],
+          pagination: { current: 1, pages: 0, total: 0, hasNext: false, hasPrev: false }
+        },
+        message: 'No service providers found in your area'
+      });
+    }
     if (category) filter.category = category;
     if (search) {
       filter.$or = [
