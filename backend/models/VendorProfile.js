@@ -43,6 +43,23 @@ const vendorProfileSchema = new mongoose.Schema({
     type: String,
     maxlength: [500, 'Description cannot exceed 500 characters']
   },
+
+  // Geolocation - GeoJSON Point for radius-based discovery
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    },
+    address: {
+      type: String,
+      default: ''
+    }
+  },
   
   // Operating Hours
   operatingHours: {
@@ -108,6 +125,7 @@ vendorProfileSchema.index({ user: 1 });
 vendorProfileSchema.index({ category: 1 });
 vendorProfileSchema.index({ businessType: 1 });
 vendorProfileSchema.index({ isActive: 1, isVerified: 1 });
+vendorProfileSchema.index({ location: '2dsphere' }); // geospatial index
 
 // Virtual for getting user details
 vendorProfileSchema.virtual('userDetails', {
