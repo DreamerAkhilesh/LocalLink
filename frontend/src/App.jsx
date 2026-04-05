@@ -2,11 +2,14 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { CartProvider } from './context/CartContext';
+import { LocationProvider } from './context/LocationContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 // Components
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import LocationBar from './components/LocationBar';
 
 // Pages
 import Home from './pages/Home';
@@ -19,6 +22,10 @@ import Orders from './pages/Orders';
 import Bookings from './pages/Bookings';
 import Profile from './pages/Profile';
 import Checkout from './pages/Checkout';
+import AddProduct from './pages/AddProduct';
+import AddService from './pages/AddService';
+import ProductDetail from './pages/ProductDetail';
+import ServiceDetail from './pages/ServiceDetail';
 
 /**
  * Main App Component
@@ -28,9 +35,12 @@ function App() {
   return (
     <AuthProvider>
       <CartProvider>
-        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <div className="min-h-screen bg-gray-50 flex flex-col">
-            <Navbar />
+        <LocationProvider>
+          <NotificationProvider>
+          <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+            <div className="min-h-screen bg-gray-50 flex flex-col">
+              <Navbar />
+              <LocationBar />
             
             <main className="flex-grow">
               <Routes>
@@ -39,7 +49,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/products" element={<Products />} />
+                <Route path="/products/:id" element={<ProductDetail />} />
                 <Route path="/services" element={<Services />} />
+                <Route path="/services/:id" element={<ServiceDetail />} />
                 
                 {/* Protected Routes */}
                 <Route path="/dashboard" element={
@@ -67,6 +79,28 @@ function App() {
                     <Profile />
                   </ProtectedRoute>
                 } />
+
+                {/* Vendor Product/Service Management */}
+                <Route path="/products/new" element={
+                  <ProtectedRoute>
+                    <AddProduct />
+                  </ProtectedRoute>
+                } />
+                <Route path="/products/:id/edit" element={
+                  <ProtectedRoute>
+                    <AddProduct />
+                  </ProtectedRoute>
+                } />
+                <Route path="/services/new" element={
+                  <ProtectedRoute>
+                    <AddService />
+                  </ProtectedRoute>
+                } />
+                <Route path="/services/:id/edit" element={
+                  <ProtectedRoute>
+                    <AddService />
+                  </ProtectedRoute>
+                } />
                 
                 {/* 404 Page */}
                 <Route path="*" element={
@@ -82,6 +116,8 @@ function App() {
             <Footer />
           </div>
         </Router>
+      </NotificationProvider>
+      </LocationProvider>
       </CartProvider>
     </AuthProvider>
   );

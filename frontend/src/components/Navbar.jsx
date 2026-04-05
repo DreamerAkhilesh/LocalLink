@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import Cart from './Cart';
+import NotificationBell from './NotificationBell';
 
 /**
  * Navigation Bar Component
@@ -74,6 +75,9 @@ const Navbar = () => {
 
             {/* Right Side Actions */}
             <div className="flex items-center space-x-4">
+              {/* Notification Bell (authenticated users only) */}
+              {isAuthenticated && <NotificationBell />}
+
               {/* Cart Icon (only for customers or non-authenticated users) */}
               {(!isAuthenticated || user?.role === 'customer') && (
                 <button

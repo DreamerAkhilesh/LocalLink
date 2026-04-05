@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
+import LocationPicker from '../components/LocationPicker';
 
 /**
  * Profile Page Component
  * View and edit user profile
  */
 const Profile = () => {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -325,6 +327,78 @@ const Profile = () => {
           </div>
         </div>
       </div>
+
+      {/* Vendor Location Section */}
+      {user?.role === 'vendor' && <VendorLocationSection />}
+    </div>
+  );
+};
+
+/**
+ * Vendor Location Section
+ * Allows vendors to set their business location via map or GPS
+ */
+const VendorLocationSection = () => {
+  const [showPicker, setShowPicker] = useState(false);
+  const [savedLocation, setSavedLocation] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [status, setStatus] = useState('');
+
+  const handleConfirm = async ({ lat, lng, address }) => {
+    setSaving(true);
+    setShowPicker(false);
+    try {
+      await api.put('/auth/vendor/location', { lat, lng, address });
+      setSavedLocation({ lat, lng, address });
+      setStatus(`✅ Location saved: ${address}`);
+    } catch {
+      setStatus('❌ Failed to save location. Try again.');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
+      <h2 className="text-xl font-semibold text-gray-800 mb-1">Business Location</h2>
+      <p className="text-sm text-gray-500 mb-4">
+        Set your business location so nearby customers can discover your products and services.
+      </p>
+
+      {savedLocation && (
+        <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+          <span className="text-green-600 text-lg">📌</span>
+          <div>
+            <p className="text-sm font-medium text-green-800">{savedLocation.address}</p>
+            <p className="text-xs text-green-600 mt-0.5">{savedLocation.lat.toFixed(5)}, {savedLocation.lng.toFixed(5)}</p>
+          </div>
+        </div>
+      )}
+
+      <div className="flex gap-3">
+        <button
+          onClick={() => setShowPicker(true)}
+          disabled={saving}
+          className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
+        >
+          🗺️ {savedLocation ? 'Change Location' : 'Set Business Location'}
+        </button>
+      </div>
+
+      {status && !saving && (
+        <p className={`mt-3 text-sm ${status.startsWith('✅') ? 'text-green-600' : 'text-red-600'}`}>
+          {status}
+        </p>
+      )}
+      {saving && <p className="mt-3 text-sm text-gray-500">Saving location...</p>}
+
+      {showPicker && (
+        <LocationPicker
+          onConfirm={handleConfirm}
+          onClose={() => setShowPicker(false)}
+          initialLat={savedLocation?.lat}
+          initialLng={savedLocation?.lng}
+        />
+      )}
     </div>
   );
 };
