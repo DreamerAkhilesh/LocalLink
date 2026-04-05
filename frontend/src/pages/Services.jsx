@@ -1,101 +1,92 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
 import ServiceBookingModal from '../components/ServiceBookingModal';
 
 /**
  * Services Page Component
- * Browse and search services
+ * - Vendor: sees only their own services with edit/delete actions
+ * - Customer/Guest: sees all services with book now
  */
 const Services = () => {
   const { isAuthenticated, user } = useAuth();
+  const { getLocationParams, locationEnabled, radius } = useLocation();
+  const isVendor = user?.role === 'vendor';
   const [services, setServices] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedService, setSelectedService] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    minPrice: '',
-    maxPrice: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc'
+    search: '', category: '', minPrice: '', maxPrice: '',
+    sortBy: 'createdAt', sortOrder: 'desc'
   });
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pages: 1,
-    total: 0
-  });
+  const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
 
   const categories = [
-    'home-services',
-    'beauty-wellness',
-    'education-tutoring',
-    'health-medical',
-    'repair-maintenance',
-    'cleaning',
-    'transportation',
-    'event-services',
-    'professional-services',
-    'other'
+    'plumbing','electrical','carpentry','painting','cleaning',
+    'appliance-repair','ac-repair','computer-repair','mobile-repair',
+    'home-maintenance','gardening','pest-control',
+    'tutoring','music-lessons','fitness-training',
+    'beauty-services','massage','healthcare',
+    'photography','event-planning','catering',
+    'transportation','delivery','moving','other'
   ];
 
-  // Fetch services
   const fetchServices = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-        ...filters
-      });
-
-      // Remove empty filters
-      Object.keys(filters).forEach(key => {
-        if (!filters[key]) {
-          params.delete(key);
-        }
-      });
-
-      const response = await api.get(`/services?${params}`);
+      let response;
+      if (isVendor) {
+        const params = new URLSearchParams({ page: page.toString(), limit: '12' });
+        if (filters.search) params.set('search', filters.search);
+        if (filters.category) params.set('category', filters.category);
+        response = await api.get(`/services/vendor/my-services?${params}`);
+      } else {
+        const params = new URLSearchParams({ page: page.toString(), limit: '12' });
+        if (filters.search) params.set('search', filters.search);
+        if (filters.category) params.set('category', filters.category);
+        if (filters.minPrice) params.set('minPrice', filters.minPrice);
+        if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
+        if (filters.sortBy) params.set('sortBy', filters.sortBy);
+        if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
+        // Append location params for radius filtering
+        const locParams = getLocationParams();
+        if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        response = await api.get(`/services?${params}`);
+      }
       setServices(response.data.data.services);
       setPagination(response.data.data.pagination);
       setError('');
     } catch (err) {
       setError('Failed to fetch services');
-      console.error('Fetch services error:', err);
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, isVendor, getLocationParams]);
 
-  useEffect(() => {
-    fetchServices();
-  }, [fetchServices]);
+  useEffect(() => { fetchServices(); }, [fetchServices]);
+
+  const handleDelete = async (serviceId) => {
+    if (!window.confirm('Delete this service?')) return;
+    try {
+      await api.delete(`/services/${serviceId}`);
+      setServices(prev => prev.filter(s => s._id !== serviceId));
+    } catch {
+      alert('Failed to delete service');
+    }
+  };
 
   const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchServices(1);
-  };
+  const handleSearch = (e) => { e.preventDefault(); };
 
   const clearFilters = () => {
-    setFilters({
-      search: '',
-      category: '',
-      minPrice: '',
-      maxPrice: '',
-      sortBy: 'createdAt',
-      sortOrder: 'desc'
-    });
+    setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' });
   };
 
   const handleBookService = (service) => {
@@ -146,9 +137,24 @@ const Services = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Local Services</h1>
-        <p className="text-gray-600">Find professional services from local providers in your area</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isVendor ? 'My Services' : 'Local Services'}
+          </h1>
+          <p className="text-gray-600">
+            {isVendor
+              ? 'Manage your service listings'
+              : locationEnabled
+                ? `Showing services within ${radius} km of your location`
+                : 'Find professional services from local providers in your area'}
+          </p>
+        </div>
+        {isVendor && (
+          <Link to="/services/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium">
+            + Add Service
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -300,9 +306,9 @@ const Services = () => {
                     {service.description}
                   </p>
                   
-                  {/* Vendor Info */}
+                  {/* Provider Info */}
                   <p className="text-xs text-gray-500 mb-2">
-                    by {service.vendor?.businessName || service.vendor?.name}
+                    by {service.provider?.businessName || service.vendor?.businessName || 'Local Provider'}
                   </p>
                   
                   {/* Service Details */}
@@ -329,19 +335,38 @@ const Services = () => {
 
                   {/* Actions */}
                   <div className="flex space-x-2">
-                    <Link
-                      to={`/services/${service._id}`}
-                      className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
-                    >
-                      View Details
-                    </Link>
-                    {isAuthenticated && (
-                      <button 
-                        onClick={() => handleBookService(service)}
-                        className="bg-secondary-600 text-white py-2 px-3 rounded-md hover:bg-secondary-700 transition-colors text-sm"
-                      >
-                        Book Now
-                      </button>
+                    {isVendor ? (
+                      <>
+                        <Link
+                          to={`/services/${service._id}/edit`}
+                          className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(service._id)}
+                          className="bg-red-500 text-white py-2 px-3 rounded-md hover:bg-red-600 transition-colors text-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          to={`/services/${service._id}`}
+                          className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
+                        >
+                          View Details
+                        </Link>
+                        {isAuthenticated && (
+                          <button
+                            onClick={() => handleBookService(service)}
+                            className="bg-secondary-600 text-white py-2 px-3 rounded-md hover:bg-secondary-700 transition-colors text-sm"
+                          >
+                            Book Now
+                          </button>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -380,7 +405,14 @@ const Services = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M8 6v10a2 2 0 002 2h4a2 2 0 002-2V6" />
           </svg>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No services found</h3>
-          <p className="text-gray-500">Try adjusting your search filters or check back later.</p>
+          <p className="text-gray-500 mb-4">
+            {isVendor ? "You haven't added any services yet." : 'Try adjusting your search filters or check back later.'}
+          </p>
+          {isVendor && (
+            <Link to="/services/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
+              Add Your First Service
+            </Link>
+          )}
         </div>
       )}
       

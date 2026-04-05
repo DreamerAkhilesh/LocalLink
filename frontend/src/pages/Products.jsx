@@ -1,14 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
+import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
 
 /**
  * Add to Cart Button Component
  */
 const AddToCartButton = ({ product }) => {
-  const { addToCart, isInCart, getItemQuantity, error, clearError } = useCart();
+  const { addToCart, isInCart, getItemQuantity, clearError } = useCart();
   const [isAdding, setIsAdding] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
 
@@ -71,9 +72,13 @@ const AddToCartButton = ({ product }) => {
 /**
  * Products Page Component
  * Browse and search products
+ * - Vendor: sees only their own products with edit/delete actions
+ * - Customer/Guest: sees all products with add to cart
  */
 const Products = () => {
   const { isAuthenticated, user } = useAuth();
+  const { getLocationParams, locationEnabled, radius } = useLocation();
+  const isVendor = user?.role === 'vendor';
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -85,87 +90,66 @@ const Products = () => {
     sortBy: 'createdAt',
     sortOrder: 'desc'
   });
-  const [pagination, setPagination] = useState({
-    current: 1,
-    pages: 1,
-    total: 0
-  });
+  const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
 
   const categories = [
-    'grocery',
-    'electronics',
-    'clothing',
-    'home-garden',
-    'health-beauty',
-    'books-stationery',
-    'sports-fitness',
-    'toys-games',
-    'automotive',
-    'other'
+    'groceries','vegetables','fruits','dairy','bakery',
+    'clothing','footwear','accessories',
+    'electronics','mobile','computers',
+    'pharmacy','medicines','health',
+    'stationery','books','office',
+    'home-appliances','furniture','other'
   ];
 
-  // Fetch products
-  const fetchProducts = async (page = 1) => {
+  const fetchProducts = useCallback(async (page = 1) => {
     try {
       setLoading(true);
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: '12',
-        ...filters
-      });
-
-      // Remove empty filters
-      Object.keys(filters).forEach(key => {
-        if (!filters[key]) {
-          params.delete(key);
-        }
-      });
-
-      const response = await api.get(`/products?${params}`);
+      let response;
+      if (isVendor) {
+        const params = new URLSearchParams({ page: page.toString(), limit: '12' });
+        if (filters.search) params.set('search', filters.search);
+        if (filters.category) params.set('category', filters.category);
+        response = await api.get(`/products/vendor/my-products?${params}`);
+      } else {
+        const params = new URLSearchParams({ page: page.toString(), limit: '12' });
+        if (filters.search) params.set('search', filters.search);
+        if (filters.category) params.set('category', filters.category);
+        if (filters.minPrice) params.set('minPrice', filters.minPrice);
+        if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
+        if (filters.sortBy) params.set('sortBy', filters.sortBy);
+        if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
+        // Append location params for radius filtering
+        const locParams = getLocationParams();
+        if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        response = await api.get(`/products?${params}`);
+      }
       setProducts(response.data.data.products);
       setPagination(response.data.data.pagination);
       setError('');
     } catch (err) {
       setError('Failed to fetch products');
-      console.error('Fetch products error:', err);
     } finally {
       setLoading(false);
     }
+  }, [filters, isVendor, getLocationParams]);
+
+  useEffect(() => { fetchProducts(); }, [fetchProducts]);
+
+  const handleDelete = async (productId) => {
+    if (!window.confirm('Delete this product?')) return;
+    try {
+      await api.delete(`/products/${productId}`);
+      setProducts(prev => prev.filter(p => p._id !== productId));
+    } catch {
+      alert('Failed to delete product');
+    }
   };
 
-  useEffect(() => {
-    fetchProducts();
-  }, [filters]);
+  const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
+  const handleSearch = (e) => { e.preventDefault(); };
+  const clearFilters = () => setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' });
 
-  const handleFilterChange = (key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  };
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    fetchProducts(1);
-  };
-
-  const clearFilters = () => {
-    setFilters({
-      search: '',
-      category: '',
-      minPrice: '',
-      maxPrice: '',
-      sortBy: 'createdAt',
-      sortOrder: 'desc'
-    });
-  };
-
-  const formatPrice = (price) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR'
-    }).format(price);
-  };
+  const formatPrice = (price) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(price);
 
   if (loading && products.length === 0) {
     return (
@@ -180,9 +164,24 @@ const Products = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-800 mb-2">Local Products</h1>
-        <p className="text-gray-600">Discover products from local vendors in your area</p>
+      <div className="mb-8 flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">
+            {isVendor ? 'My Products' : 'Local Products'}
+          </h1>
+          <p className="text-gray-600">
+            {isVendor
+              ? 'Manage your product listings'
+              : locationEnabled
+                ? `Showing products within ${radius} km of your location`
+                : 'Discover products from local vendors in your area'}
+          </p>
+        </div>
+        {isVendor && (
+          <Link to="/products/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium">
+            + Add Product
+          </Link>
+        )}
       </div>
 
       {/* Filters */}
@@ -352,14 +351,33 @@ const Products = () => {
 
                   {/* Actions */}
                   <div className="flex space-x-2">
-                    <Link
-                      to={`/products/${product._id}`}
-                      className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
-                    >
-                      View Details
-                    </Link>
-                    {isAuthenticated && user?.role === 'customer' && (
-                      <AddToCartButton product={product} />
+                    {isVendor ? (
+                      <>
+                        <Link
+                          to={`/products/${product._id}/edit`}
+                          className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
+                        >
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDelete(product._id)}
+                          className="bg-red-500 text-white py-2 px-3 rounded-md hover:bg-red-600 transition-colors text-sm"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <Link
+                          to={`/products/${product._id}`}
+                          className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"
+                        >
+                          View Details
+                        </Link>
+                        {isAuthenticated && user?.role === 'customer' && (
+                          <AddToCartButton product={product} />
+                        )}
+                      </>
                     )}
                   </div>
                 </div>
@@ -398,7 +416,14 @@ const Products = () => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
           </svg>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
-          <p className="text-gray-500">Try adjusting your search filters or check back later.</p>
+          <p className="text-gray-500 mb-4">
+            {isVendor ? "You haven't added any products yet." : 'Try adjusting your search filters or check back later.'}
+          </p>
+          {isVendor && (
+            <Link to="/products/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
+              Add Your First Product
+            </Link>
+          )}
         </div>
       )}
     </div>
