@@ -136,7 +136,8 @@ const createService = async (req, res) => {
 
     const serviceData = {
       ...req.body,
-      provider: vendorProfile._id
+      provider: vendorProfile._id,
+      status: 'pending-approval'
     };
     
     console.log('📝 Service data to save:', JSON.stringify(serviceData, null, 2));

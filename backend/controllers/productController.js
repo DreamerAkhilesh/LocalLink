@@ -133,7 +133,8 @@ const createProduct = async (req, res) => {
 
     const productData = {
       ...req.body,
-      vendor: vendorProfile._id
+      vendor: vendorProfile._id,
+      status: 'pending-approval'
     };
 
     const product = new Product(productData);
