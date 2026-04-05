@@ -1,7 +1,21 @@
 const Order = require('../models/Order');
 const Product = require('../models/Product');
 const VendorProfile = require('../models/VendorProfile');
+const User = require('../models/User');
+const Notification = require('../models/Notification');
 const { validationResult } = require('express-validator');
+
+// Helper: create notifications for both vendor and customer
+const createNotifications = async ({ orderId, orderNumber, customerId, vendorUserId, type, title, message }) => {
+  try {
+    const notes = [];
+    if (customerId) notes.push({ recipient: customerId, type, title, message, orderId, orderNumber });
+    if (vendorUserId) notes.push({ recipient: vendorUserId, type, title, message, orderId, orderNumber });
+    if (notes.length) await Notification.insertMany(notes);
+  } catch (err) {
+    console.error('Notification creation error:', err.message);
+  }
+};
 
 /**
  * @desc    Create new order
@@ -145,6 +159,21 @@ const createOrder = async (req, res) => {
         ]);
 
         createdOrders.push(order);
+
+        // Notify vendor about new order
+        const vendorUser = await User.findOne({ _id: { $in: await VendorProfile.findById(vendorId).then(v => v?.user) } });
+        const vendorDoc = await VendorProfile.findById(vendorId);
+        if (vendorDoc) {
+          await createNotifications({
+            orderId: order._id,
+            orderNumber: order.orderNumber,
+            customerId: req.user.id,
+            vendorUserId: vendorDoc.user,
+            type: 'order_placed',
+            title: 'New Order Received',
+            message: `Order #${order.orderNumber} has been placed. Total: ₹${order.totalAmount}`
+          });
+        }
         
       } catch (error) {
         console.error('Error creating individual order:', error);
@@ -355,78 +384,96 @@ const getOrder = async (req, res) => {
 };
 
 /**
- * @desc    Update order status
+ * @desc    Update order status with notes + payment tracking + notifications
  * @route   PUT /api/orders/:id/status
  * @access  Private/Vendor
  */
 const updateOrderStatus = async (req, res) => {
   try {
-    const { status } = req.body;
-    const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
+    const { status, note, paymentStatus } = req.body;
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status'
-      });
+    const deliveryStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'out-for-delivery', 'delivered', 'cancelled'];
+    if (status && !deliveryStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid delivery status' });
+    }
+    if (paymentStatus && !['unpaid', 'payment-received', 'payment-verified'].includes(paymentStatus)) {
+      return res.status(400).json({ success: false, message: 'Invalid payment status' });
     }
 
-    // Get vendor profile
     const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
-    if (!vendorProfile) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile not found'
-      });
+    if (!vendorProfile) return res.status(400).json({ success: false, message: 'Vendor profile not found' });
+
+    const order = await Order.findById(req.params.id).populate('customer', 'name');
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+    if (order.vendor.toString() !== vendorProfile._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const order = await Order.findById(req.params.id);
+    const changes = [];
 
-    if (!order) {
-      return res.status(404).json({
-        success: false,
-        message: 'Order not found'
+    // Update delivery status
+    if (status && status !== order.status) {
+      order.status = status;
+      order.statusHistory.push({
+        status,
+        timestamp: new Date(),
+        note: note || '',
+        updatedBy: req.user.id
       });
+      if (status === 'delivered') order.actualDeliveryDate = new Date();
+      changes.push(`Delivery: ${status.replace(/-/g, ' ')}`);
     }
 
-    // Check if vendor has access to this order
-    const hasAccess = order.vendor.toString() === vendorProfile._id.toString();
-
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
+    // Update payment status
+    if (paymentStatus && paymentStatus !== order.paymentStatus) {
+      order.paymentStatus = paymentStatus;
+      order.statusHistory.push({
+        status: `payment:${paymentStatus}`,
+        timestamp: new Date(),
+        note: note || '',
+        updatedBy: req.user.id
       });
-    }
-
-    order.status = status;
-    order.updatedAt = Date.now();
-
-    // Update delivery date if delivered
-    if (status === 'delivered') {
-      order.deliveredAt = new Date();
+      changes.push(`Payment: ${paymentStatus.replace(/-/g, ' ')}`);
     }
 
     await order.save();
-
     await order.populate([
       { path: 'customer', select: 'name email phone' },
       { path: 'vendor', select: 'businessName phone email' },
       { path: 'items.product', select: 'name images' }
     ]);
 
-    res.json({
-      success: true,
-      message: 'Order status updated successfully',
-      data: { order }
-    });
+    // Send notifications to both customer and vendor
+    if (changes.length) {
+      const statusLabels = {
+        confirmed: 'Your order has been confirmed',
+        preparing: 'Your order is being prepared',
+        ready: 'Your order is ready',
+        'out-for-delivery': 'Your order is out for delivery 🚚',
+        delivered: 'Your order has been delivered ✅',
+        cancelled: 'Your order has been cancelled',
+        'payment-received': 'Payment received for your order',
+        'payment-verified': 'Payment verified for your order'
+      };
 
+      const notifTitle = status ? (statusLabels[status] || `Order status: ${status}`) : `Payment update: ${paymentStatus}`;
+      const notifMsg = `Order #${order.orderNumber} — ${changes.join(', ')}${note ? `. Note: ${note}` : ''}`;
+
+      await createNotifications({
+        orderId: order._id,
+        orderNumber: order.orderNumber,
+        customerId: order.customer._id,
+        vendorUserId: req.user.id,
+        type: status ? 'order_status' : 'payment_status',
+        title: notifTitle,
+        message: notifMsg
+      });
+    }
+
+    res.json({ success: true, message: 'Order updated successfully', data: { order } });
   } catch (error) {
     console.error('Update order status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update order status'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update order' });
   }
 };
 
@@ -484,11 +531,19 @@ const cancelOrder = async (req, res) => {
     order.updatedAt = Date.now();
     await order.save();
 
-    res.json({
-      success: true,
-      message: 'Order cancelled successfully',
-      data: { order }
+    // Notify both parties
+    const vendorDoc = await VendorProfile.findById(order.vendor);
+    await createNotifications({
+      orderId: order._id,
+      orderNumber: order.orderNumber,
+      customerId: order.customer,
+      vendorUserId: vendorDoc?.user,
+      type: 'order_cancelled',
+      title: 'Order Cancelled',
+      message: `Order #${order.orderNumber} has been cancelled`
     });
+
+    res.json({ success: true, message: 'Order cancelled successfully', data: { order } });
 
   } catch (error) {
     console.error('Cancel order error:', error);

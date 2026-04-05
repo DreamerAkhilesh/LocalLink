@@ -340,16 +340,13 @@ const VendorOrders = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId, newStatus, notes = '') => {
+  const updateOrderStatus = async (orderId, newStatus, notes = '', paymentStatus = null) => {
     try {
-      await api.put(`/orders/${orderId}/status`, {
-        status: newStatus,
-        notes: notes
-      });
-      
-      fetchOrders(); // Refresh orders
+      const payload = { status: newStatus, note: notes };
+      if (paymentStatus) payload.paymentStatus = paymentStatus;
+      await api.put(`/orders/${orderId}/status`, payload);
+      fetchOrders();
       setSelectedOrder(null);
-      alert('Order status updated successfully');
     } catch (err) {
       console.error('Error updating order status:', err);
       alert(err.response?.data?.message || 'Failed to update order status');
@@ -558,7 +555,17 @@ const VendorOrders = () => {
                         <div className="text-sm text-gray-600 mb-2">
                           <p>Customer: {order.customer?.name} • {order.customer?.phone}</p>
                           <p>Ordered: {formatDate(order.orderDate)} • Items: {order.items.length} • Total: {formatPrice(order.totalAmount)}</p>
-                          <p>Payment: {order.paymentMethod.replace('-', ' ')} ({order.paymentStatus})</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>Payment: {order.paymentMethod.replace('-', ' ')}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              order.paymentStatus === 'payment-verified' ? 'bg-teal-100 text-teal-800' :
+                              order.paymentStatus === 'payment-received' ? 'bg-emerald-100 text-emerald-800' :
+                              'bg-orange-100 text-orange-800'
+                            }`}>
+                              {order.paymentStatus === 'payment-verified' ? '✓ Verified' :
+                               order.paymentStatus === 'payment-received' ? '💳 Received' : '⏳ Unpaid'}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Items Preview */}
@@ -587,10 +594,29 @@ const VendorOrders = () => {
                         
                         {getNextStatus(order.status) && order.status !== 'delivered' && order.status !== 'cancelled' && (
                           <button
-                            onClick={() => updateOrderStatus(order._id, getNextStatus(order.status))}
+                            onClick={() => {
+                              const note = window.prompt(`Add a note for "${getStatusAction(order.status)}" (optional):`);
+                              if (note !== null) updateOrderStatus(order._id, getNextStatus(order.status), note);
+                            }}
                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
                           >
                             {getStatusAction(order.status)}
+                          </button>
+                        )}
+                        {order.status === 'delivered' && order.paymentStatus === 'unpaid' && (
+                          <button
+                            onClick={() => updateOrderStatus(order._id, null, '', 'payment-received')}
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm"
+                          >
+                            💳 Mark Paid
+                          </button>
+                        )}
+                        {order.paymentStatus === 'payment-received' && (
+                          <button
+                            onClick={() => updateOrderStatus(order._id, null, '', 'payment-verified')}
+                            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm"
+                          >
+                            ✓ Verify Payment
                           </button>
                         )}
                       </div>
@@ -733,19 +759,25 @@ const OrderDetailsModal = ({ order, onClose, formatPrice, formatDate, getStatusC
             </div>
           )}
 
-          {/* Status History */}
+          {/* Status History / Timeline */}
           {order.statusHistory && order.statusHistory.length > 0 && (
             <div className="mt-6">
               <h4 className="font-semibold mb-3">Order Timeline</h4>
-              <div className="space-y-2">
-                {order.statusHistory.map((history, index) => (
-                  <div key={index} className="flex items-center gap-3 text-sm">
-                    <span className={`w-3 h-3 rounded-full ${getStatusColor(history.status).replace('text-', 'bg-').split(' ')[0]}`}></span>
-                    <span className="font-medium">{history.status.replace('-', ' ').toUpperCase()}</span>
-                    <span className="text-gray-500">{formatDate(history.timestamp)}</span>
-                    {history.notes && <span className="text-gray-600">- {history.notes}</span>}
-                  </div>
-                ))}
+              <div className="relative pl-4 border-l-2 border-gray-200 space-y-4">
+                {[...order.statusHistory].reverse().map((history, index) => {
+                  const isPayment = history.status?.startsWith('payment:');
+                  const label = isPayment
+                    ? `💳 Payment: ${history.status.replace('payment:', '').replace(/-/g, ' ')}`
+                    : `${history.status.replace(/-/g, ' ').toUpperCase()}`;
+                  return (
+                    <div key={index} className="relative">
+                      <span className="absolute -left-5 w-3 h-3 rounded-full bg-primary-500 border-2 border-white"></span>
+                      <p className="text-sm font-semibold text-gray-800">{label}</p>
+                      <p className="text-xs text-gray-500">{formatDate(history.timestamp)}</p>
+                      {history.note && <p className="text-xs text-gray-600 mt-0.5 italic">"{history.note}"</p>}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -780,10 +812,10 @@ const VendorOrderDetailsModal = ({
   const [notes, setNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusUpdate = async (newStatus) => {
+  const handleStatusUpdate = async (newStatus, paymentStatus = null) => {
     setIsUpdating(true);
     try {
-      await onUpdateStatus(order._id, newStatus, notes);
+      await onUpdateStatus(order._id, newStatus, notes, paymentStatus);
       setNotes('');
     } finally {
       setIsUpdating(false);
@@ -890,29 +922,49 @@ const VendorOrderDetailsModal = ({
           )}
 
           {/* Status Update Section */}
-          {getNextStatus(order.status) && order.status !== 'delivered' && order.status !== 'cancelled' && (
+          {(getNextStatus(order.status) || order.paymentStatus !== 'payment-verified') && order.status !== 'cancelled' && (
             <div className="mb-6 bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-3">Update Order Status</h4>
+              <h4 className="font-semibold mb-3">Update Order</h4>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Add Notes (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes about this status update..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Add a note for this update..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     rows="2"
                   />
                 </div>
-                <button
-                  onClick={() => handleStatusUpdate(getNextStatus(order.status))}
-                  disabled={isUpdating}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  {isUpdating ? 'Updating...' : getStatusAction(order.status)}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {getNextStatus(order.status) && order.status !== 'delivered' && (
+                    <button
+                      onClick={() => handleStatusUpdate(getNextStatus(order.status))}
+                      disabled={isUpdating}
+                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      {isUpdating ? 'Updating...' : getStatusAction(order.status)}
+                    </button>
+                  )}
+                  {order.paymentStatus === 'unpaid' && (
+                    <button
+                      onClick={() => handleStatusUpdate(null, 'payment-received')}
+                      disabled={isUpdating}
+                      className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      💳 Mark Payment Received
+                    </button>
+                  )}
+                  {order.paymentStatus === 'payment-received' && (
+                    <button
+                      onClick={() => handleStatusUpdate(null, 'payment-verified')}
+                      disabled={isUpdating}
+                      className="flex-1 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      ✓ Verify Payment
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}
