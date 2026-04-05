@@ -415,7 +415,11 @@ const Products = () => {
           </svg>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No products found</h3>
           <p className="text-gray-500 mb-4">
-            {isVendor ? "You haven't added any products yet." : 'Try adjusting your search filters or check back later.'}
+            {isVendor
+              ? "You haven't added any products yet."
+              : locationEnabled
+                ? `No vendors found within ${radius} km of your location. Try increasing the radius or disabling location filter.`
+                : 'Try adjusting your search filters or check back later.'}
           </p>
           {isVendor && (
             <Link to="/products/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
