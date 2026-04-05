@@ -207,11 +207,11 @@ const LocationPicker = ({ onConfirm, onClose, initialLat, initialLng }) => {
         </div>
 
         {/* Map */}
-        <div className="flex-1" style={{ minHeight: '300px' }}>
+        <div style={{ height: '280px', flexShrink: 0 }}>
           <MapContainer
             center={marker ? [marker.lat, marker.lng] : [defaultPos.lat, defaultPos.lng]}
             zoom={marker ? 15 : 5}
-            style={{ height: '100%', width: '100%', minHeight: '300px' }}
+            style={{ height: '100%', width: '100%' }}
           >
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
