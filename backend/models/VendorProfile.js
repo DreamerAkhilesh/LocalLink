@@ -82,6 +82,15 @@ const vendorProfileSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'verified', 'rejected'],
+    default: 'pending'
+  },
+  verificationNote: {
+    type: String,
+    default: ''
+  },
   verificationDocuments: [{
     type: String,
     url: String
