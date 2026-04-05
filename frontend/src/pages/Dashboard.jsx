@@ -115,8 +115,33 @@ const Dashboard = () => {
  * Vendor Dashboard Component
  */
 const VendorDashboard = ({ stats, recentItems }) => {
+  const { vendorProfile } = useAuth();
+  const verificationStatus = vendorProfile?.verificationStatus || 'pending';
+
   return (
     <>
+      {/* Verification status banner */}
+      {verificationStatus !== 'verified' && (
+        <div className={`rounded-xl px-5 py-4 mb-6 border ${
+          verificationStatus === 'rejected'
+            ? 'bg-red-50 border-red-200'
+            : 'bg-yellow-50 border-yellow-200'
+        }`}>
+          <div className="flex items-start gap-3">
+            <span className="text-2xl">{verificationStatus === 'rejected' ? '❌' : '⏳'}</span>
+            <div>
+              <p className={`font-semibold ${verificationStatus === 'rejected' ? 'text-red-800' : 'text-yellow-800'}`}>
+                {verificationStatus === 'rejected' ? 'Account Rejected' : 'Account Pending Verification'}
+              </p>
+              <p className={`text-sm mt-0.5 ${verificationStatus === 'rejected' ? 'text-red-700' : 'text-yellow-700'}`}>
+                {verificationStatus === 'rejected'
+                  ? `Your vendor account was rejected. ${vendorProfile?.verificationNote ? `Reason: ${vendorProfile.verificationNote}` : 'Please contact support.'}`
+                  : 'Your account is under review by our admin team. You can add products and services once approved.'}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm border p-6">

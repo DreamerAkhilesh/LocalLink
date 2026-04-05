@@ -314,6 +314,17 @@ const Services = () => {
                   <div className="flex space-x-2">
                     {isVendor ? (
                       <>
+                        {/* Status badge */}
+                        <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                          service.status === 'active' ? 'bg-green-100 text-green-700' :
+                          service.status === 'pending-approval' ? 'bg-yellow-100 text-yellow-700' :
+                          service.status === 'rejected' ? 'bg-red-100 text-red-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {service.status === 'pending-approval' ? '⏳ Pending' :
+                           service.status === 'active' ? '✅ Active' :
+                           service.status === 'rejected' ? '❌ Rejected' : service.status}
+                        </span>
                         <Link
                           to={`/services/${service._id}/edit`}
                           className="flex-1 bg-primary-600 text-white text-center py-2 px-3 rounded-md hover:bg-primary-700 transition-colors text-sm"

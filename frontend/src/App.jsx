@@ -26,6 +26,11 @@ import AddProduct from './pages/AddProduct';
 import AddService from './pages/AddService';
 import ProductDetail from './pages/ProductDetail';
 import ServiceDetail from './pages/ServiceDetail';
+import AdminRoute from './components/AdminRoute';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminVendors from './pages/admin/AdminVendors';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminServices from './pages/admin/AdminServices';
 
 /**
  * Main App Component
@@ -102,9 +107,14 @@ function App() {
                   </ProtectedRoute>
                 } />
                 
+                {/* Admin Routes */}
+                <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                <Route path="/admin/vendors" element={<AdminRoute><AdminVendors /></AdminRoute>} />
+                <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+                <Route path="/admin/services" element={<AdminRoute><AdminServices /></AdminRoute>} />
+
                 {/* 404 Page */}
-                <Route path="*" element={
-                  <div className="container mx-auto px-4 py-16 text-center">
+                <Route path="*" element={                  <div className="container mx-auto px-4 py-16 text-center">
                     <h1 className="text-4xl font-bold text-gray-800 mb-4">404 - Page Not Found</h1>
                     <p className="text-gray-600 mb-8">The page you're looking for doesn't exist.</p>
                     <a href="/" className="btn-primary">Go Home</a>

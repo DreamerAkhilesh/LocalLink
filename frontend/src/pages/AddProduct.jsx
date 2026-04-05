@@ -66,6 +66,8 @@ const AddProduct = () => {
   const addImageField = () => setForm(prev => ({ ...prev, images: [...prev.images, ''] }));
   const removeImageField = (i) => setForm(prev => ({ ...prev, images: prev.images.filter((_, idx) => idx !== i) }));
 
+  const [submitted, setSubmitted] = useState(false);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -80,10 +82,11 @@ const AddProduct = () => {
       };
       if (isEdit) {
         await api.put(`/products/${id}`, payload);
+        navigate('/products');
       } else {
         await api.post('/products', payload);
+        setSubmitted(true);
       }
-      navigate('/dashboard');
     } catch (err) {
       const validationErrors = err.response?.data?.errors;
       setError(validationErrors?.[0]?.msg || err.response?.data?.message || 'Failed to save product');
@@ -95,6 +98,19 @@ const AddProduct = () => {
   if (fetching) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+    </div>
+  );
+
+  if (submitted) return (
+    <div className="container mx-auto px-4 py-16 max-w-lg text-center">
+      <div className="text-5xl mb-4">⏳</div>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">Product Submitted for Review</h2>
+      <p className="text-gray-600 mb-6">Your product has been submitted and is pending admin approval. It will be visible to customers once approved.</p>
+      <div className="flex gap-3 justify-center">
+        <button onClick={() => { setSubmitted(false); setForm({ name: '', description: '', category: '', price: '', stock: '', unit: 'piece', images: [''], discount: 0 }); }}
+          className="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700">Add Another</button>
+        <button onClick={() => navigate('/products')} className="border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50">View My Products</button>
+      </div>
     </div>
   );
 

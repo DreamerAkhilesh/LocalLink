@@ -133,6 +133,22 @@ const Navbar = () => {
                       >
                         Profile
                       </Link>
+                      {user?.role === 'admin' && (
+                        <>
+                          <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
+                            Admin Dashboard
+                          </Link>
+                          <Link to="/admin/vendors" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
+                            Manage Vendors
+                          </Link>
+                          <Link to="/admin/products" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
+                            Manage Products
+                          </Link>
+                          <Link to="/admin/services" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
+                            Manage Services
+                          </Link>
+                        </>
+                      )}
                       {user?.role === 'customer' && (
                         <>
                           <Link
