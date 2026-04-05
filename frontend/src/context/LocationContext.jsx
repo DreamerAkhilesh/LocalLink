@@ -74,10 +74,10 @@ export const LocationProvider = ({ children }) => {
   };
 
   // Build query params to append to API calls
-  const getLocationParams = () => {
+  const getLocationParams = useCallback(() => {
     if (!locationEnabled || !location) return {};
     return { lat: location.lat, lng: location.lng, radius };
-  };
+  }, [locationEnabled, location, radius]);
 
   return (
     <LocationContext.Provider value={{

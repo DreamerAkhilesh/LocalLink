@@ -155,12 +155,10 @@ const Services = () => {
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
         <form onSubmit={handleSearch} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className={`grid grid-cols-1 ${isVendor ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-4'} gap-4`}>
             {/* Search */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Search Services
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Search Services</label>
               <input
                 type="text"
                 value={filters.search}
@@ -172,9 +170,7 @@ const Services = () => {
 
             {/* Category */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Category
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
               <select
                 value={filters.category}
                 onChange={(e) => handleFilterChange('category', e.target.value)}
@@ -183,76 +179,64 @@ const Services = () => {
                 <option value="">All Categories</option>
                 {categories.map(category => (
                   <option key={category} value={category}>
-                    {category.charAt(0).toUpperCase() + category.slice(1).replace('-', ' ')}
+                    {category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ')}
                   </option>
                 ))}
               </select>
             </div>
 
-            {/* Price Range */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Min Price (₹)
-              </label>
-              <input
-                type="number"
-                value={filters.minPrice}
-                onChange={(e) => handleFilterChange('minPrice', e.target.value)}
-                placeholder="0"
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Max Price (₹)
-              </label>
-              <input
-                type="number"
-                value={filters.maxPrice}
-                onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
-                placeholder="5000"
-                min="0"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+            {/* Price Range — customer only */}
+            {!isVendor && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Min Price (₹)</label>
+                  <input type="number" value={filters.minPrice}
+                    onChange={(e) => handleFilterChange('minPrice', e.target.value)}
+                    placeholder="0" min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Max Price (₹)</label>
+                  <input type="number" value={filters.maxPrice}
+                    onChange={(e) => handleFilterChange('maxPrice', e.target.value)}
+                    placeholder="5000" min="0"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500" />
+                </div>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap gap-4 items-center">
-            {/* Sort */}
-            <div className="flex items-center space-x-2">
-              <label className="text-sm font-medium text-gray-700">Sort by:</label>
-              <select
-                value={`${filters.sortBy}:${filters.sortOrder}`}
-                onChange={(e) => {
-                  const [sortBy, sortOrder] = e.target.value.split(':');
-                  handleFilterChangeBatch({ sortBy, sortOrder });
-                }}
-                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="createdAt:desc">Newest First</option>
-                <option value="createdAt:asc">Oldest First</option>
-                <option value="basePrice:asc">Price: Low to High</option>
-                <option value="basePrice:desc">Price: High to Low</option>
-                <option value="title:asc">Name: A to Z</option>
-                <option value="title:desc">Name: Z to A</option>
-              </select>
-            </div>
+            {/* Sort — customer only */}
+            {!isVendor && (
+              <div className="flex items-center space-x-2">
+                <label className="text-sm font-medium text-gray-700">Sort by:</label>
+                <select
+                  value={`${filters.sortBy}:${filters.sortOrder}`}
+                  onChange={(e) => {
+                    const [sortBy, sortOrder] = e.target.value.split(':');
+                    handleFilterChangeBatch({ sortBy, sortOrder });
+                  }}
+                  className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
+                >
+                  <option value="createdAt:desc">Newest First</option>
+                  <option value="createdAt:asc">Oldest First</option>
+                  <option value="basePrice:asc">Price: Low to High</option>
+                  <option value="basePrice:desc">Price: High to Low</option>
+                  <option value="title:asc">Name: A to Z</option>
+                  <option value="title:desc">Name: Z to A</option>
+                </select>
+              </div>
+            )}
 
             {/* Action Buttons */}
             <div className="flex space-x-2">
-              <button
-                type="submit"
-                className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-              >
+              <button type="submit"
+                className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">
                 Search
               </button>
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors"
-              >
+              <button type="button" onClick={clearFilters}
+                className="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition-colors">
                 Clear
               </button>
             </div>
