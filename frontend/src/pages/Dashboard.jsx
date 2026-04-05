@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
-/**
- * Dashboard Component
- * Different views for customers and vendors
- */
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [stats, setStats] = useState({});
   const [recentItems, setRecentItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Redirect admin to their own dashboard
   useEffect(() => {
-    fetchDashboardData();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    if (user?.role === 'admin') {
+      navigate('/admin', { replace: true });
+    }
+  }, [user, navigate]);
 
   const fetchDashboardData = async () => {
     try {

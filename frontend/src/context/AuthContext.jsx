@@ -166,7 +166,7 @@ export const AuthProvider = ({ children }) => {
         type: AUTH_ACTIONS.LOGIN_SUCCESS,
         payload: response.data
       });
-      return { success: true };
+      return { success: true, role: response.data.user?.role };
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Login failed';
       dispatch({

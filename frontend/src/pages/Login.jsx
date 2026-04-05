@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
  * User authentication form
  */
 const Login = () => {
-  const { login, isAuthenticated, loading, error, clearError } = useAuth();
+  const { login, isAuthenticated, user, loading, error, clearError } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   
@@ -20,10 +20,11 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/dashboard';
+      const defaultPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+      const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, navigate, location]);
   
   // Clear errors when component mounts
   useEffect(() => {
@@ -45,7 +46,9 @@ const Login = () => {
     const result = await login(formData);
     
     if (result.success) {
-      const from = location.state?.from?.pathname || '/dashboard';
+      // Redirect admin to admin dashboard, others to their dashboard
+      const defaultPath = result.role === 'admin' ? '/admin' : '/dashboard';
+      const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     }
     
@@ -176,6 +179,7 @@ const Login = () => {
           <div className="text-xs text-blue-700 space-y-1">
             <p><strong>Customer:</strong> john@example.com / Test123456</p>
             <p><strong>Vendor:</strong> shop@example.com / Test123456</p>
+            <p><strong>Admin:</strong> admin@locallink.com / Admin@1234</p>
           </div>
         </div>
       </div>

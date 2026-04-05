@@ -5,10 +5,6 @@ import { useCart } from '../context/CartContext';
 import Cart from './Cart';
 import NotificationBell from './NotificationBell';
 
-/**
- * Navigation Bar Component
- * Responsive navigation with authentication and cart integration
- */
 const Navbar = () => {
   const { isAuthenticated, user, logout } = useAuth();
   const { totalItems } = useCart();
@@ -18,20 +14,95 @@ const Navbar = () => {
   const [isCartOpen, setIsCartOpen] = useState(false);
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
+  const isAdmin = user?.role === 'admin';
+
   const handleLogout = () => {
     logout();
     navigate('/');
     setIsProfileDropdownOpen(false);
   };
 
-  const isActivePath = (path) => {
-    return location.pathname === path;
-  };
+  const isActivePath = (path) => location.pathname === path;
 
-  const toggleCart = () => {
-    setIsCartOpen(!isCartOpen);
-  };
+  // ── ADMIN NAVBAR ──────────────────────────────────────────────
+  if (isAdmin) {
+    return (
+      <nav className="bg-gray-900 shadow-lg sticky top-0 z-30">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <Link to="/admin" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">A</span>
+              </div>
+              <span className="text-xl font-bold text-white">Local Link <span className="text-red-400 text-sm font-normal">Admin</span></span>
+            </Link>
 
+            {/* Admin nav links */}
+            <div className="hidden md:flex items-center space-x-6">
+              <Link to="/admin" className={`text-sm font-medium transition-colors ${isActivePath('/admin') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                Dashboard
+              </Link>
+              <Link to="/admin/vendors" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/vendors') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                Vendors
+              </Link>
+              <Link to="/admin/products" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/products') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                Products
+              </Link>
+              <Link to="/admin/services" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/services') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                Services
+              </Link>
+            </div>
+
+            {/* Right: notification + user */}
+            <div className="flex items-center space-x-3">
+              <NotificationBell />
+              <div className="relative">
+                <button
+                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
+                >
+                  <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">{user?.name?.charAt(0)?.toUpperCase()}</span>
+                  </div>
+                  <span className="hidden md:block text-sm">{user?.name}</span>
+                </button>
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg py-1 z-50">
+                    <div className="px-4 py-2 text-xs text-gray-500 border-b">Admin Account</div>
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
+                      Logout
+                    </button>
+                  </div>
+                )}
+              </div>
+              {/* Mobile menu button */}
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-gray-400 hover:text-white">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  {isMenuOpen
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* Mobile admin menu */}
+          {isMenuOpen && (
+            <div className="md:hidden border-t border-gray-700 py-4 space-y-3">
+              {[['Dashboard', '/admin'], ['Vendors', '/admin/vendors'], ['Products', '/admin/products'], ['Services', '/admin/services']].map(([label, path]) => (
+                <Link key={path} to={path} onClick={() => setIsMenuOpen(false)}
+                  className="block text-gray-300 hover:text-white text-sm">{label}</Link>
+              ))}
+              <button onClick={handleLogout} className="block text-red-400 hover:text-red-300 text-sm mt-2">Logout</button>
+            </div>
+          )}
+        </div>
+      </nav>
+    );
+  }
+
+  // ── CUSTOMER / VENDOR / GUEST NAVBAR ──────────────────────────
   return (
     <>
       <nav className="bg-white shadow-lg sticky top-0 z-30">
@@ -45,45 +116,20 @@ const Navbar = () => {
               <span className="text-xl font-bold text-gray-800">Local Link</span>
             </Link>
 
-            {/* Desktop Navigation */}
+            {/* Desktop nav */}
             <div className="hidden md:flex items-center space-x-8">
-              <Link
-                to="/"
-                className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                  isActivePath('/') ? 'text-primary-600 font-medium' : ''
-                }`}
-              >
-                Home
-              </Link>
-              <Link
-                to="/products"
-                className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                  isActivePath('/products') ? 'text-primary-600 font-medium' : ''
-                }`}
-              >
-                Products
-              </Link>
-              <Link
-                to="/services"
-                className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                  isActivePath('/services') ? 'text-primary-600 font-medium' : ''
-                }`}
-              >
-                Services
-              </Link>
+              <Link to="/" className={`text-gray-700 hover:text-primary-600 transition-colors ${isActivePath('/') ? 'text-primary-600 font-medium' : ''}`}>Home</Link>
+              <Link to="/products" className={`text-gray-700 hover:text-primary-600 transition-colors ${isActivePath('/products') ? 'text-primary-600 font-medium' : ''}`}>Products</Link>
+              <Link to="/services" className={`text-gray-700 hover:text-primary-600 transition-colors ${isActivePath('/services') ? 'text-primary-600 font-medium' : ''}`}>Services</Link>
             </div>
 
-            {/* Right Side Actions */}
+            {/* Right actions */}
             <div className="flex items-center space-x-4">
-              {/* Notification Bell (authenticated users only) */}
               {isAuthenticated && <NotificationBell />}
 
-              {/* Cart Icon (only for customers or non-authenticated users) */}
+              {/* Cart — customers only */}
               {(!isAuthenticated || user?.role === 'customer') && (
-                <button
-                  onClick={toggleCart}
-                  className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors"
-                >
+                <button onClick={() => setIsCartOpen(!isCartOpen)} className="relative p-2 text-gray-700 hover:text-primary-600 transition-colors">
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
                   </svg>
@@ -95,17 +141,12 @@ const Navbar = () => {
                 </button>
               )}
 
-              {/* Authentication Actions */}
               {isAuthenticated ? (
                 <div className="relative">
-                  <button
-                    onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors"
-                  >
+                  <button onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                    className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 transition-colors">
                     <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                      <span className="text-primary-600 font-medium text-sm">
-                        {user?.name?.charAt(0)?.toUpperCase()}
-                      </span>
+                      <span className="text-primary-600 font-medium text-sm">{user?.name?.charAt(0)?.toUpperCase()}</span>
                     </div>
                     <span className="hidden md:block">{user?.name}</span>
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -113,182 +154,59 @@ const Navbar = () => {
                     </svg>
                   </button>
 
-                  {/* Profile Dropdown */}
                   {isProfileDropdownOpen && (
                     <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
-                      <div className="px-4 py-2 text-sm text-gray-500 border-b">
-                        {user?.role === 'vendor' ? 'Vendor Account' : 'Customer Account'}
-                      </div>
-                      <Link
-                        to="/dashboard"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/profile"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                        onClick={() => setIsProfileDropdownOpen(false)}
-                      >
-                        Profile
-                      </Link>
-                      {user?.role === 'admin' && (
-                        <>
-                          <Link to="/admin" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
-                            Admin Dashboard
-                          </Link>
-                          <Link to="/admin/vendors" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
-                            Manage Vendors
-                          </Link>
-                          <Link to="/admin/products" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
-                            Manage Products
-                          </Link>
-                          <Link to="/admin/services" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>
-                            Manage Services
-                          </Link>
-                        </>
-                      )}
+                      <div className="px-4 py-2 text-sm text-gray-500 border-b capitalize">{user?.role} Account</div>
+                      <Link to="/dashboard" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Dashboard</Link>
+                      <Link to="/profile" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Profile</Link>
                       {user?.role === 'customer' && (
                         <>
-                          <Link
-                            to="/orders"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                          >
-                            My Orders
-                          </Link>
-                          <Link
-                            to="/bookings"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                          >
-                            My Bookings
-                          </Link>
+                          <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>My Orders</Link>
+                          <Link to="/bookings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>My Bookings</Link>
                         </>
                       )}
                       {user?.role === 'vendor' && (
                         <>
-                          <Link
-                            to="/orders"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                          >
-                            Manage Orders
-                          </Link>
-                          <Link
-                            to="/bookings"
-                            className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                            onClick={() => setIsProfileDropdownOpen(false)}
-                          >
-                            Manage Bookings
-                          </Link>
+                          <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Manage Orders</Link>
+                          <Link to="/bookings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Manage Bookings</Link>
                         </>
                       )}
                       <div className="border-t">
-                        <button
-                          onClick={handleLogout}
-                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
-                        >
-                          Logout
-                        </button>
+                        <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
                 <div className="flex items-center space-x-4">
-                  <Link
-                    to="/login"
-                    className="text-gray-700 hover:text-primary-600 transition-colors"
-                  >
-                    Login
-                  </Link>
-                  <Link
-                    to="/register"
-                    className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors"
-                  >
-                    Sign Up
-                  </Link>
+                  <Link to="/login" className="text-gray-700 hover:text-primary-600 transition-colors">Login</Link>
+                  <Link to="/register" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors">Sign Up</Link>
                 </div>
               )}
 
-              {/* Mobile Menu Button */}
-              <button
-                onClick={() => setIsMenuOpen(!isMenuOpen)}
-                className="md:hidden p-2 text-gray-700 hover:text-primary-600 transition-colors"
-              >
+              <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-gray-700 hover:text-primary-600 transition-colors">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMenuOpen ? (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  ) : (
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  )}
+                  {isMenuOpen
+                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
                 </svg>
               </button>
             </div>
           </div>
 
-          {/* Mobile Menu */}
+          {/* Mobile menu */}
           {isMenuOpen && (
             <div className="md:hidden border-t border-gray-200 py-4">
               <div className="flex flex-col space-y-4">
-                <Link
-                  to="/"
-                  className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                    isActivePath('/') ? 'text-primary-600 font-medium' : ''
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Home
-                </Link>
-                <Link
-                  to="/products"
-                  className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                    isActivePath('/products') ? 'text-primary-600 font-medium' : ''
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Products
-                </Link>
-                <Link
-                  to="/services"
-                  className={`text-gray-700 hover:text-primary-600 transition-colors ${
-                    isActivePath('/services') ? 'text-primary-600 font-medium' : ''
-                  }`}
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  Services
-                </Link>
-                
+                <Link to="/" className="text-gray-700 hover:text-primary-600" onClick={() => setIsMenuOpen(false)}>Home</Link>
+                <Link to="/products" className="text-gray-700 hover:text-primary-600" onClick={() => setIsMenuOpen(false)}>Products</Link>
+                <Link to="/services" className="text-gray-700 hover:text-primary-600" onClick={() => setIsMenuOpen(false)}>Services</Link>
                 {isAuthenticated && (
-                  <>
-                    <div className="border-t pt-4">
-                      <Link
-                        to="/dashboard"
-                        className="block text-gray-700 hover:text-primary-600 transition-colors"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Dashboard
-                      </Link>
-                      <Link
-                        to="/profile"
-                        className="block text-gray-700 hover:text-primary-600 transition-colors mt-2"
-                        onClick={() => setIsMenuOpen(false)}
-                      >
-                        Profile
-                      </Link>
-                      <button
-                        onClick={() => {
-                          handleLogout();
-                          setIsMenuOpen(false);
-                        }}
-                        className="block text-red-600 hover:text-red-700 transition-colors mt-2"
-                      >
-                        Logout
-                      </button>
-                    </div>
-                  </>
+                  <div className="border-t pt-4 space-y-2">
+                    <Link to="/dashboard" className="block text-gray-700 hover:text-primary-600" onClick={() => setIsMenuOpen(false)}>Dashboard</Link>
+                    <Link to="/profile" className="block text-gray-700 hover:text-primary-600" onClick={() => setIsMenuOpen(false)}>Profile</Link>
+                    <button onClick={() => { handleLogout(); setIsMenuOpen(false); }} className="block text-red-600 hover:text-red-700">Logout</button>
+                  </div>
                 )}
               </div>
             </div>
@@ -296,7 +214,6 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Cart Sidebar */}
       <Cart isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </>
   );
