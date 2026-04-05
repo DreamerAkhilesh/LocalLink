@@ -17,6 +17,12 @@ const Dashboard = () => {
     }
   }, [user, navigate]);
 
+  useEffect(() => {
+    if (user?.role !== 'admin') {
+      fetchDashboardData();
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchDashboardData = async () => {
     try {
       setLoading(true);
@@ -115,8 +121,14 @@ const Dashboard = () => {
  * Vendor Dashboard Component
  */
 const VendorDashboard = ({ stats, recentItems }) => {
-  const { vendorProfile } = useAuth();
+  const [vendorProfile, setVendorProfile] = useState(null);
+
+  useEffect(() => {
+    api.get('/auth/profile').then(r => setVendorProfile(r.data.data.vendorProfile)).catch(() => {});
+  }, []);
+
   const verificationStatus = vendorProfile?.verificationStatus || 'pending';
+  const hasLocation = vendorProfile?.location?.coordinates?.[0] !== 0 || vendorProfile?.location?.coordinates?.[1] !== 0;
 
   return (
     <>
@@ -142,6 +154,23 @@ const VendorDashboard = ({ stats, recentItems }) => {
           </div>
         </div>
       )}
+
+      {/* Location missing banner */}
+      {vendorProfile && !hasLocation && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-5 py-4 mb-6 flex items-start gap-3">
+          <span className="text-2xl">📍</span>
+          <div className="flex-1">
+            <p className="font-semibold text-blue-800">Business location not set</p>
+            <p className="text-sm text-blue-700 mt-0.5">
+              Customers using location-based search won't find your products or services. Set your location now.
+            </p>
+          </div>
+          <Link to="/profile" className="flex-shrink-0 bg-blue-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-700">
+            Set Location
+          </Link>
+        </div>
+      )}
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         <div className="bg-white rounded-lg shadow-sm border p-6">
