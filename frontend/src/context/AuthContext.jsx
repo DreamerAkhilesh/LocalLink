@@ -28,7 +28,8 @@ const AUTH_ACTIONS = {
   LOAD_USER_FAILURE: 'LOAD_USER_FAILURE',
   LOGOUT: 'LOGOUT',
   CLEAR_ERROR: 'CLEAR_ERROR',
-  UPDATE_PROFILE: 'UPDATE_PROFILE'
+  UPDATE_PROFILE: 'UPDATE_PROFILE',
+  UPDATE_VENDOR_PROFILE: 'UPDATE_VENDOR_PROFILE'
 };
 
 // Reducer function
@@ -112,6 +113,12 @@ const authReducer = (state, action) => {
       return {
         ...state,
         user: { ...state.user, ...action.payload }
+      };
+
+    case AUTH_ACTIONS.UPDATE_VENDOR_PROFILE:
+      return {
+        ...state,
+        vendorProfile: { ...state.vendorProfile, ...action.payload }
       };
       
     default:
@@ -226,13 +233,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, []);
   
+  // Update vendor profile in context (e.g. after location save)
+  const updateVendorProfile = useCallback((profileData) => {
+    dispatch({ type: AUTH_ACTIONS.UPDATE_VENDOR_PROFILE, payload: profileData });
+  }, []);
+
   const value = {
     ...state,
     login,
     register,
     logout,
     clearError,
-    updateProfile
+    updateProfile,
+    updateVendorProfile
   };
   
   return (
