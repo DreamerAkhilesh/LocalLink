@@ -10,24 +10,29 @@ const { validationResult } = require('express-validator');
 const getProducts = async (req, res) => {
   try {
     const {
-      category,
-      search,
-      minPrice,
-      maxPrice,
-      location,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      page = 1,
-      limit = 12
+      category, search, minPrice, maxPrice,
+      lat, lng, radius = 10, // radius in km, default 10km
+      sortBy = 'createdAt', sortOrder = 'desc',
+      page = 1, limit = 12
     } = req.query;
 
-    // Build filter object
-    const filter = { isActive: true };
-    
-    if (category) {
-      filter.category = category;
+    // If location provided, find vendors within radius first
+    let vendorIds = null;
+    if (lat && lng) {
+      const nearbyVendors = await VendorProfile.find({
+        location: {
+          $nearSphere: {
+            $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+            $maxDistance: parseFloat(radius) * 1000 // convert km to meters
+          }
+        }
+      }).select('_id');
+      vendorIds = nearbyVendors.map(v => v._id);
     }
-    
+
+    const filter = { isAvailable: true, status: 'active' };
+    if (vendorIds) filter.vendor = { $in: vendorIds };
+    if (category) filter.category = category;
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },
@@ -35,28 +40,20 @@ const getProducts = async (req, res) => {
         { tags: { $in: [new RegExp(search, 'i')] } }
       ];
     }
-    
     if (minPrice || maxPrice) {
       filter.price = {};
       if (minPrice) filter.price.$gte = parseFloat(minPrice);
       if (maxPrice) filter.price.$lte = parseFloat(maxPrice);
     }
 
-    // Build sort object
     const sort = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Get products with vendor info
     const products = await Product.find(filter)
-      .populate('vendor', 'name businessName businessType address')
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
+      .populate('vendor', 'name businessName businessType address location')
+      .sort(sort).skip(skip).limit(parseInt(limit));
 
-    // Get total count for pagination
     const total = await Product.countDocuments(filter);
 
     res.json({
@@ -74,10 +71,7 @@ const getProducts = async (req, res) => {
     });
   } catch (error) {
     console.error('Get products error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch products'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch products' });
   }
 };
 
@@ -92,30 +86,17 @@ const getProduct = async (req, res) => {
       .populate('vendor', 'name businessName businessType address phone email');
 
     if (!product) {
-      return res.status(404).json({
-        success: false,
-        message: 'Product not found'
-      });
+      return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    console.log('🔍 Product check:', {
-      id: product._id,
-      isAvailable: product.isAvailable,
-      status: product.status,
-      stock: product.stock
-    });
-    
-    if (!product.isAvailable || product.status !== 'active') {
-      return res.status(404).json({
-        success: false,
-        message: 'Product is not available'
-      });
+    // Allow vendor to view their own inactive products (for editing)
+    // For public access, only show active/available products
+    const isOwner = req.user && product.vendor && req.user.vendorProfileId?.toString() === product.vendor.toString();
+    if (!isOwner && (!product.isAvailable || product.status !== 'active')) {
+      return res.status(404).json({ success: false, message: 'Product is not available' });
     }
 
-    res.json({
-      success: true,
-      data: { product }
-    });
+    res.json({ success: true, data: { product } });
   } catch (error) {
     console.error('Get product error:', error);
     res.status(500).json({
@@ -270,7 +251,7 @@ const deleteProduct = async (req, res) => {
     }
 
     // Soft delete - mark as inactive
-    product.isActive = false;
+    product.status = 'inactive';
     await product.save();
 
     res.json({
@@ -293,35 +274,28 @@ const deleteProduct = async (req, res) => {
  */
 const getVendorProducts = async (req, res) => {
   try {
-    // Get vendor profile
     const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
     if (!vendorProfile) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile not found'
-      });
+      return res.status(400).json({ success: false, message: 'Vendor profile not found' });
     }
 
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
+    const { page = 1, limit = 12, sortBy = 'createdAt', sortOrder = 'desc', search, category } = req.query;
 
-    // Build sort object
+    const filter = { vendor: vendorProfile._id, status: { $ne: 'inactive' } };
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (category) filter.category = category;
+
     const sort = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const products = await Product.find({ vendor: vendorProfile._id })
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Product.countDocuments({ vendor: vendorProfile._id });
+    const products = await Product.find(filter).sort(sort).skip(skip).limit(parseInt(limit));
+    const total = await Product.countDocuments(filter);
 
     res.json({
       success: true,
@@ -338,10 +312,7 @@ const getVendorProducts = async (req, res) => {
     });
   } catch (error) {
     console.error('Get vendor products error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch vendor products'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch vendor products' });
   }
 };
 

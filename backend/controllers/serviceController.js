@@ -1,7 +1,6 @@
 const Service = require('../models/Service');
 const VendorProfile = require('../models/VendorProfile');
 const { validationResult } = require('express-validator');
-
 /**
  * @desc    Get all services with filters
  * @route   GET /api/services
@@ -10,24 +9,29 @@ const { validationResult } = require('express-validator');
 const getServices = async (req, res) => {
   try {
     const {
-      category,
-      search,
-      minPrice,
-      maxPrice,
-      location,
-      sortBy = 'createdAt',
-      sortOrder = 'desc',
-      page = 1,
-      limit = 12
+      category, search, minPrice, maxPrice,
+      lat, lng, radius = 10,
+      sortBy = 'createdAt', sortOrder = 'desc',
+      page = 1, limit = 12
     } = req.query;
 
-    // Build filter object
-    const filter = { isAvailable: true, status: 'active' };
-    
-    if (category) {
-      filter.category = category;
+    // If location provided, find vendors within radius first
+    let providerIds = null;
+    if (lat && lng) {
+      const nearbyVendors = await VendorProfile.find({
+        location: {
+          $nearSphere: {
+            $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+            $maxDistance: parseFloat(radius) * 1000
+          }
+        }
+      }).select('_id');
+      providerIds = nearbyVendors.map(v => v._id);
     }
-    
+
+    const filter = { isAvailable: true, status: 'active' };
+    if (providerIds) filter.provider = { $in: providerIds };
+    if (category) filter.category = category;
     if (search) {
       filter.$or = [
         { title: { $regex: search, $options: 'i' } },
@@ -35,28 +39,20 @@ const getServices = async (req, res) => {
         { tags: { $in: [new RegExp(search, 'i')] } }
       ];
     }
-    
     if (minPrice || maxPrice) {
       filter.basePrice = {};
       if (minPrice) filter.basePrice.$gte = parseFloat(minPrice);
       if (maxPrice) filter.basePrice.$lte = parseFloat(maxPrice);
     }
 
-    // Build sort object
     const sort = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    // Get services with vendor info
     const services = await Service.find(filter)
-      .populate('provider', 'businessName businessType address')
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
+      .populate('provider', 'businessName businessType address location')
+      .sort(sort).skip(skip).limit(parseInt(limit));
 
-    // Get total count for pagination
     const total = await Service.countDocuments(filter);
 
     res.json({
@@ -74,10 +70,7 @@ const getServices = async (req, res) => {
     });
   } catch (error) {
     console.error('Get services error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch services'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch services' });
   }
 };
 
@@ -89,19 +82,12 @@ const getServices = async (req, res) => {
 const getService = async (req, res) => {
   try {
     const service = await Service.findById(req.params.id)
-      .populate('vendor', 'name businessName businessType address phone email');
+      .populate('provider', 'businessName businessType address');
 
     if (!service) {
       return res.status(404).json({
         success: false,
         message: 'Service not found'
-      });
-    }
-
-    if (!service.isActive) {
-      return res.status(404).json({
-        success: false,
-        message: 'Service is not available'
       });
     }
 
@@ -209,7 +195,7 @@ const updateService = async (req, res) => {
     }
 
     // Check if vendor owns this service
-    if (service.vendor.toString() !== vendorProfile._id.toString()) {
+    if (service.provider.toString() !== vendorProfile._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this service'
@@ -221,7 +207,7 @@ const updateService = async (req, res) => {
     service.updatedAt = Date.now();
     await service.save();
 
-    await service.populate('vendor', 'businessName businessType address');
+    await service.populate('provider', 'businessName businessType address');
 
     res.json({
       success: true,
@@ -261,8 +247,8 @@ const deleteService = async (req, res) => {
       });
     }
 
-    // Check if vendor owns this service
-    if (service.vendor.toString() !== vendorProfile._id.toString()) {
+    // Check if vendor owns this service (delete)
+    if (service.provider.toString() !== vendorProfile._id.toString()) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to delete this service'
@@ -270,7 +256,7 @@ const deleteService = async (req, res) => {
     }
 
     // Soft delete - mark as inactive
-    service.isActive = false;
+    service.status = 'inactive';
     await service.save();
 
     res.json({
@@ -293,35 +279,28 @@ const deleteService = async (req, res) => {
  */
 const getVendorServices = async (req, res) => {
   try {
-    // Get vendor profile
     const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
     if (!vendorProfile) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile not found'
-      });
+      return res.status(400).json({ success: false, message: 'Vendor profile not found' });
     }
 
-    const {
-      page = 1,
-      limit = 10,
-      sortBy = 'createdAt',
-      sortOrder = 'desc'
-    } = req.query;
+    const { page = 1, limit = 12, sortBy = 'createdAt', sortOrder = 'desc', search, category } = req.query;
 
-    // Build sort object
+    const filter = { provider: vendorProfile._id, status: { $ne: 'inactive' } };
+    if (search) {
+      filter.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+    if (category) filter.category = category;
+
     const sort = {};
     sort[sortBy] = sortOrder === 'asc' ? 1 : -1;
-
-    // Calculate pagination
     const skip = (parseInt(page) - 1) * parseInt(limit);
 
-    const services = await Service.find({ vendor: vendorProfile._id })
-      .sort(sort)
-      .skip(skip)
-      .limit(parseInt(limit));
-
-    const total = await Service.countDocuments({ vendor: vendorProfile._id });
+    const services = await Service.find(filter).sort(sort).skip(skip).limit(parseInt(limit));
+    const total = await Service.countDocuments(filter);
 
     res.json({
       success: true,
@@ -338,10 +317,7 @@ const getVendorServices = async (req, res) => {
     });
   } catch (error) {
     console.error('Get vendor services error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch vendor services'
-    });
+    res.status(500).json({ success: false, message: 'Failed to fetch vendor services' });
   }
 };
 
