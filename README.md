@@ -9,12 +9,14 @@ Local Link is a hyperlocal marketplace platform that connects local shop owners,
 - **Customers**: People searching for nearby products or services
 
 ## 🏗️ Tech Stack
+
 ### Frontend
-- React.js
+- React.js 18
 - Tailwind CSS
-- React Router
+- React Router v6
 - Axios
 - Context API
+- Leaflet.js + react-leaflet (interactive maps)
 
 ### Backend
 - Node.js
@@ -26,6 +28,7 @@ Local Link is a hyperlocal marketplace platform that connects local shop owners,
 - MongoDB (Local)
 - Mongoose ODM
 - MongoDB Compass
+- Geospatial indexing (2dsphere)
 
 ### Authentication
 - JWT (Access Token)
@@ -37,33 +40,50 @@ Local-Link/
 ├── frontend/
 │   └── src/
 │       ├── components/
+│       │   ├── LocationBar.jsx        # Address search + GPS location bar
+│       │   ├── LocationPicker.jsx     # Leaflet map modal for vendor location
+│       │   ├── NotificationBell.jsx   # In-app notification bell
 │       │   ├── ServiceBookingModal.jsx
-│       │   └── ...
+│       │   ├── Navbar.jsx
+│       │   └── Cart.jsx
 │       ├── pages/
-│       │   ├── Bookings.jsx
-│       │   ├── Orders.jsx
-│       │   └── ...
+│       │   ├── Products.jsx           # Role-based product listing
+│       │   ├── Services.jsx           # Role-based service listing
+│       │   ├── ProductDetail.jsx      # Product detail + add to cart
+│       │   ├── ServiceDetail.jsx      # Service detail + book now
+│       │   ├── AddProduct.jsx         # Vendor create/edit product
+│       │   ├── AddService.jsx         # Vendor create/edit service
+│       │   ├── Orders.jsx             # Order management (customer + vendor)
+│       │   ├── Bookings.jsx           # Booking management (customer + vendor)
+│       │   ├── Dashboard.jsx
+│       │   └── Profile.jsx
 │       ├── context/
+│       │   ├── AuthContext.jsx
+│       │   ├── CartContext.jsx
+│       │   ├── LocationContext.jsx    # GPS + address search state
+│       │   └── NotificationContext.jsx # In-app notifications (30s polling)
 │       ├── services/
-│       ├── utils/
 │       └── App.jsx
 ├── backend/
 │   ├── controllers/
-│   │   ├── bookingController.js
-│   │   ├── orderController.js
-│   │   └── ...
+│   │   ├── orderController.js         # Order + payment status + notifications
+│   │   ├── bookingController.js       # Booking + payment status + notifications
+│   │   ├── productController.js
+│   │   └── serviceController.js
 │   ├── models/
-│   │   ├── Booking.js
-│   │   ├── Order.js
-│   │   └── ...
+│   │   ├── Order.js                   # Payment status: unpaid/received/verified
+│   │   ├── Booking.js                 # Payment status: unpaid/received/verified
+│   │   ├── Notification.js            # In-app notification model
+│   │   ├── VendorProfile.js           # GeoJSON location field
+│   │   ├── Product.js
+│   │   ├── Service.js
+│   │   └── User.js
 │   ├── routes/
-│   │   ├── bookingRoutes.js
+│   │   ├── notificationRoutes.js
 │   │   ├── orderRoutes.js
+│   │   ├── bookingRoutes.js
 │   │   └── ...
 │   ├── tests/
-│   │   ├── test-booking-system.js
-│   │   ├── test-booking-scenarios.js
-│   │   └── ...
 │   ├── middleware/
 │   ├── config/
 │   ├── utils/
@@ -71,7 +91,7 @@ Local-Link/
 └── README.md
 ```
 
-## � How to Run Locally
+## 🚀 How to Run Locally
 
 ### Prerequisites
 - Node.js (v14+)
@@ -95,128 +115,159 @@ npm start
 ### Running Tests
 ```bash
 cd backend
-# Run comprehensive booking system tests
 node tests/test-booking-system.js
-
-# Run booking scenarios tests
 node tests/test-booking-scenarios.js
-
-# Run frontend integration tests
 node tests/test-frontend-integration.js
 ```
 
-## � Core Features (Fully Implemented)
+## ✅ Core Features
 
 ### 🔐 Authentication & User Management
-- ✅ JWT-based Authentication
-- ✅ Role-based Access Control (Customer/Vendor)
-- ✅ User Registration & Login
-- ✅ Profile Management
+- JWT-based Authentication with role-based access control
+- Dual role registration: Customer & Vendor
+- Profile management with address and business info
+- Password validation (uppercase + lowercase + number)
+
+### 🗺️ Geolocation-Based Discovery
+- Vendors set their business location via interactive Leaflet map
+- Customers search any address (Nominatim autocomplete — no API key needed)
+- GPS detection with one click
+- Radius-based filtering: 2km / 5km / 10km / 20km / 50km
+- Products and services automatically filtered by vendor proximity
+- Location bar visible on every page
 
 ### 🛍️ Product Management
-- ✅ Product Listings with Categories
-- ✅ Advanced Search & Filtering
-- ✅ Inventory Management
-- ✅ Vendor Product Dashboard
+- Vendor: Add, edit, delete products with image URLs
+- Vendor: Category, price, stock, unit, discount management
+- Customer: Browse all products with search, category, price, sort filters
+- Customer: Product detail page with image gallery and quantity selector
+- Soft delete — inactive products hidden from all views
 
 ### 🛠️ Service Management
-- ✅ Service Listings with Flexible Pricing
-- ✅ Service Categories & Search
-- ✅ Service Provider Dashboard
-- ✅ Service Availability Management
+- Vendor: Add, edit, delete services with flexible pricing models
+- Pricing types: Fixed / Hourly / Per-visit / Negotiable
+- Customer: Browse all services with search, category, price, sort filters
+- Customer: Service detail page with booking integration
+- Soft delete — inactive services hidden from all views
 
 ### 📦 Order Management System
-- ✅ Shopping Cart with Persistence
-- ✅ Multi-vendor Order Support
-- ✅ Complete Checkout Process
-- ✅ Order Status Tracking
-- ✅ Customer Order History
-- ✅ Vendor Order Dashboard
-- ✅ Real-time Stock Management
+- Shopping cart with localStorage persistence
+- Multi-vendor order support (separate orders per vendor)
+- Complete checkout with home delivery or self-pickup
+- **Delivery status workflow** (vendor-controlled):
+  `Pending → Confirmed → Preparing → Ready → Out for Delivery → Delivered`
+- **Payment status tracking** (independent of delivery):
+  `Unpaid → Payment Received → Payment Verified`
+- Optional note on every status update
+- Full timeline with timestamps in order details
+- Stock auto-deducted on order, restored on cancellation
+- Customer can cancel pending/confirmed orders
 
-### 📅 Booking Management System ⭐ **NEW**
-- ✅ Service Booking with Scheduling
-- ✅ Multiple Service Locations (Home/Vendor/Online)
-- ✅ Booking Status Workflow
-- ✅ Customer Booking History
-- ✅ Vendor Booking Dashboard
-- ✅ Booking Rescheduling & Cancellation
-- ✅ Real-time Booking Statistics
-- ✅ Professional Booking Modal Interface
+### 📅 Booking Management System
+- Service booking with date/time scheduling
+- Service location options: Home / Vendor location / Online
+- Conflict prevention — no double bookings for same vendor + time slot
+- **Booking status workflow** (vendor-controlled):
+  `Pending → Confirmed → In-Progress → Completed`
+- **Payment status tracking** (same as orders):
+  `Unpaid → Payment Received → Payment Verified`
+- Optional note on every status update
+- Customer can reschedule or cancel bookings
+- Vendor booking statistics dashboard with revenue tracking
+- Revenue only counts payment-verified completed bookings
+
+### 🔔 In-App Notification System
+- Notification bell in navbar with unread count badge
+- Notifications triggered on:
+  - New order placed (vendor notified)
+  - Order/booking status change (customer notified)
+  - Payment status update (both notified)
+  - Order/booking cancellation (both notified)
+- 30-second polling — no Socket.io required
+- Mark all read / mark individual read
+- Click notification to navigate to orders/bookings page
+- Last 30 notifications stored per user
 
 ### 💳 Payment System
-- ✅ Cash on Delivery
-- ✅ Pay at Shop/Service
-- ✅ Payment Status Tracking
-- ✅ Multiple Payment Methods
+- Cash on Delivery / Pay at Shop / Pay at Service
+- Three-stage payment tracking: Unpaid → Received → Verified
+- Vendor manually marks payment received and verified
+- Revenue dashboard only counts verified payments
 
 ### 📊 Dashboard & Analytics
-- ✅ Customer Dashboard with Statistics
-- ✅ Vendor Dashboard with Business Metrics
-- ✅ Real-time Order & Booking Analytics
-- ✅ Revenue Tracking
+- Customer: total orders, bookings, amount spent
+- Vendor: total products, services, orders, bookings
+- Vendor booking stats: today's bookings, upcoming, revenue
+- Quick action shortcuts for all key features
 
 ## 👥 User Roles
-1. **Customer**: Browse, search, place orders/bookings, manage history
-2. **Vendor/Service Provider**: Manage listings, handle orders/bookings, view analytics
-3. **Admin**: User management, listing approval (future scope)
 
-## 🎯 Key Booking System Features
+### Customer
+- Browse products and services (filtered by location if set)
+- Add to cart, checkout, track orders
+- Book services, reschedule, cancel
+- View notification history
 
-### For Customers:
-- **Service Discovery**: Browse and search services by category
-- **Easy Booking**: Professional booking modal with date/time selection
-- **Service Locations**: Choose home service, vendor location, or online
-- **Booking Management**: View history, track status, reschedule or cancel
-- **Real-time Updates**: Live booking status tracking
+### Vendor
+- Add/edit/delete products and services
+- Set business location on interactive map
+- Manage orders: advance delivery status, mark payment
+- Manage bookings: confirm, start, complete, mark payment
+- View booking statistics and verified revenue
 
-### For Service Providers:
-- **Booking Dashboard**: Comprehensive booking management interface
-- **Status Management**: Update booking status through workflow
-- **Customer Information**: Access customer details and service addresses
-- **Statistics**: Real-time booking analytics and revenue tracking
-- **Schedule Management**: Avoid conflicts with intelligent scheduling
+## 🗺️ Location System Details
 
-## 🧪 Testing Suite
-- **100% Test Coverage** for booking system
-- **12 Comprehensive Tests** covering all booking scenarios
-- **Frontend Integration Tests** for seamless user experience
-- **Multiple Booking Scenarios** (home, vendor, online services)
-- **Error Handling Tests** for robust system reliability
+### For Customers
+1. Click the location bar at the top of any page
+2. Type any city, area, or address — live suggestions appear
+3. Or click "⊕ Use GPS" for automatic detection
+4. Select radius (2–50 km)
+5. Products and services pages now show only nearby vendors
 
-## 🔮 Future Scope (Phase-2)
-- Online payments (Razorpay integration)
-- Ratings & Reviews system
-- Live chat using Socket.io
-- Delivery partner integration
-- AI-based recommendation system
-- Google Maps integration
-- Push notifications for booking updates
-- Advanced analytics dashboard
+### For Vendors
+1. Go to Profile page
+2. Scroll to "Business Location" section
+3. Click "🗺️ Set Business Location"
+4. Search any address OR click on the map OR use GPS
+5. Confirm — location saved to your vendor profile
 
 ## 📊 Database Schema
-- **User** (role-based authentication)
-- **VendorProfile** (business information)
-- **Product** (inventory management)
-- **Service** (service offerings)
-- **Order** (e-commerce transactions)
-- **Booking** (service appointments) ⭐ **NEW**
+- **User** — role-based authentication
+- **VendorProfile** — business info + GeoJSON location (2dsphere indexed)
+- **Product** — inventory with soft delete
+- **Service** — service offerings with soft delete
+- **Order** — delivery status + payment status + timeline
+- **Booking** — booking status + payment status + timeline
+- **Notification** — in-app notifications with read tracking
+
+## 🧪 Testing
+- 12 comprehensive booking system tests (100% pass rate)
+- Frontend integration tests
+- Multiple booking scenario tests
+
+## 🔮 Future Scope
+- Online payments (Razorpay/Stripe)
+- Ratings & Reviews system
+- Real-time notifications via Socket.io
+- Delivery partner integration
+- AI-based recommendation engine
+- Push notifications (PWA)
+- Advanced analytics dashboard
 
 ## 🎓 Academic Context
-This project demonstrates:
-- **Industry-standard architecture** with MVC pattern
-- **Clean, commented code** with comprehensive documentation
-- **Scalable design patterns** for future enhancements
-- **Demo-ready features** with professional UI/UX
-- **Comprehensive testing** with 100% success rate
-- **Real-world application** solving local commerce challenges
+Demonstrates:
+- Full-stack MERN development
+- Geospatial queries with MongoDB 2dsphere indexes
+- Role-based access control
+- Real-world e-commerce patterns (multi-vendor, inventory, payment lifecycle)
+- Clean MVC architecture with separation of concerns
 
 ## 📈 Project Statistics
-- **Total Commits**: 63+ professional commits
-- **Lines of Code**: 10,000+ lines
-- **API Endpoints**: 25+ RESTful endpoints
-- **Test Coverage**: 100% for core features
-- **UI Components**: 15+ reusable React components
+- **Total Commits**: 75+ professional commits
+- **API Endpoints**: 35+ RESTful endpoints
+- **React Components**: 20+ reusable components
+- **Database Models**: 7 Mongoose schemas
+- **Test Coverage**: 100% for booking system
 
 ---
 **Built with ❤️ for local community empowerment**
