@@ -146,6 +146,7 @@ const Products = () => {
   };
 
   const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
+  const handleFilterChangeBatch = (updates) => setFilters(prev => ({ ...prev, ...updates }));
   const handleSearch = (e) => { e.preventDefault(); };
   const clearFilters = () => setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' });
 
@@ -256,21 +257,19 @@ const Products = () => {
             <div className="flex items-center space-x-2">
               <label className="text-sm font-medium text-gray-700">Sort by:</label>
               <select
-                value={filters.sortBy}
-                onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                value={`${filters.sortBy}:${filters.sortOrder}`}
+                onChange={(e) => {
+                  const [sortBy, sortOrder] = e.target.value.split(':');
+                  handleFilterChangeBatch({ sortBy, sortOrder });
+                }}
                 className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="createdAt">Newest</option>
-                <option value="price">Price</option>
-                <option value="name">Name</option>
-              </select>
-              <select
-                value={filters.sortOrder}
-                onChange={(e) => handleFilterChange('sortOrder', e.target.value)}
-                className="px-3 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-              >
-                <option value="asc">Low to High</option>
-                <option value="desc">High to Low</option>
+                <option value="createdAt:desc">Newest First</option>
+                <option value="createdAt:asc">Oldest First</option>
+                <option value="price:asc">Price: Low to High</option>
+                <option value="price:desc">Price: High to Low</option>
+                <option value="name:asc">Name: A to Z</option>
+                <option value="name:desc">Name: Z to A</option>
               </select>
             </div>
 
