@@ -413,17 +413,16 @@ const VendorBookings = () => {
     }
   };
 
-  const updateBookingStatus = async (bookingId, newStatus, notes = '') => {
+  const updateBookingStatus = async (bookingId, newStatus, notes = '', paymentStatus = null) => {
     try {
-      await api.put(`/bookings/${bookingId}/status`, {
-        status: newStatus,
-        notes: notes
-      });
-      
-      fetchBookings(); // Refresh bookings
-      fetchStats(); // Refresh stats
+      const payload = {};
+      if (newStatus) payload.status = newStatus;
+      if (notes) payload.notes = notes;
+      if (paymentStatus) payload.paymentStatus = paymentStatus;
+      await api.put(`/bookings/${bookingId}/status`, payload);
+      fetchBookings();
+      fetchStats();
       setSelectedBooking(null);
-      alert('Booking status updated successfully');
     } catch (err) {
       console.error('Error updating booking status:', err);
       alert(err.response?.data?.message || 'Failed to update booking status');
@@ -655,7 +654,17 @@ const VendorBookings = () => {
                           <p className="font-medium text-gray-900">{booking.serviceDetails?.name}</p>
                           <p>Customer: {booking.customer?.name} • {booking.customer?.phone}</p>
                           <p>Scheduled: {formatDateTime(booking.scheduledDate, booking.scheduledTime)}</p>
-                          <p>Amount: {formatPrice(booking.totalAmount)} • Payment: {booking.paymentMethod.replace('-', ' ')}</p>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span>Amount: {formatPrice(booking.totalAmount)} • {booking.paymentMethod.replace('-', ' ')}</span>
+                            <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                              booking.paymentStatus === 'payment-verified' ? 'bg-teal-100 text-teal-800' :
+                              booking.paymentStatus === 'payment-received' ? 'bg-emerald-100 text-emerald-800' :
+                              'bg-orange-100 text-orange-800'
+                            }`}>
+                              {booking.paymentStatus === 'payment-verified' ? '✓ Verified' :
+                               booking.paymentStatus === 'payment-received' ? '💳 Received' : '⏳ Unpaid'}
+                            </span>
+                          </div>
                         </div>
 
                         {/* Customer Address for home service */}
@@ -684,10 +693,29 @@ const VendorBookings = () => {
                         
                         {getNextStatus(booking.status) && booking.status !== 'completed' && booking.status !== 'cancelled' && (
                           <button
-                            onClick={() => updateBookingStatus(booking._id, getNextStatus(booking.status))}
+                            onClick={() => {
+                              const note = window.prompt(`Add a note for "${getStatusAction(booking.status)}" (optional):`);
+                              if (note !== null) updateBookingStatus(booking._id, getNextStatus(booking.status), note);
+                            }}
                             className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-sm"
                           >
                             {getStatusAction(booking.status)}
+                          </button>
+                        )}
+                        {booking.paymentStatus === 'unpaid' && (
+                          <button
+                            onClick={() => updateBookingStatus(booking._id, null, '', 'payment-received')}
+                            className="px-4 py-2 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm"
+                          >
+                            💳 Mark Paid
+                          </button>
+                        )}
+                        {booking.paymentStatus === 'payment-received' && (
+                          <button
+                            onClick={() => updateBookingStatus(booking._id, null, '', 'payment-verified')}
+                            className="px-4 py-2 bg-teal-600 text-white rounded-md hover:bg-teal-700 transition-colors text-sm"
+                          >
+                            ✓ Verify Payment
                           </button>
                         )}
                       </div>
@@ -875,10 +903,10 @@ const VendorBookingDetailsModal = ({
   const [notes, setNotes] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
-  const handleStatusUpdate = async (newStatus) => {
+  const handleStatusUpdate = async (newStatus, paymentStatus = null) => {
     setIsUpdating(true);
     try {
-      await onUpdateStatus(booking._id, newStatus, notes);
+      await onUpdateStatus(booking._id, newStatus, notes, paymentStatus);
       setNotes('');
     } finally {
       setIsUpdating(false);
@@ -970,35 +998,62 @@ const VendorBookingDetailsModal = ({
               </div>
               <div className="flex justify-between items-center mt-1">
                 <span>Payment Status:</span>
-                <span>{booking.paymentStatus}</span>
+                <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
+                  booking.paymentStatus === 'payment-verified' ? 'bg-teal-100 text-teal-800' :
+                  booking.paymentStatus === 'payment-received' ? 'bg-emerald-100 text-emerald-800' :
+                  'bg-orange-100 text-orange-800'
+                }`}>
+                  {booking.paymentStatus === 'payment-verified' ? '✓ Verified' :
+                   booking.paymentStatus === 'payment-received' ? '💳 Received' : '⏳ Unpaid'}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Status Update Section */}
-          {getNextStatus(booking.status) && booking.status !== 'completed' && booking.status !== 'cancelled' && (
+          {(getNextStatus(booking.status) || booking.paymentStatus !== 'payment-verified') && booking.status !== 'cancelled' && (
             <div className="mb-6 bg-blue-50 p-4 rounded-lg">
-              <h4 className="font-semibold mb-3">Update Booking Status</h4>
+              <h4 className="font-semibold mb-3">Update Booking</h4>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Add Notes (Optional)
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Note (optional)</label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes about this status update..."
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Add a note for this update..."
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     rows="2"
                   />
                 </div>
-                <button
-                  onClick={() => handleStatusUpdate(getNextStatus(booking.status))}
-                  disabled={isUpdating}
-                  className="w-full bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors disabled:opacity-50"
-                >
-                  {isUpdating ? 'Updating...' : getStatusAction(booking.status)}
-                </button>
+                <div className="flex flex-wrap gap-2">
+                  {getNextStatus(booking.status) && booking.status !== 'completed' && (
+                    <button
+                      onClick={() => handleStatusUpdate(getNextStatus(booking.status))}
+                      disabled={isUpdating}
+                      className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      {isUpdating ? 'Updating...' : getStatusAction(booking.status)}
+                    </button>
+                  )}
+                  {booking.paymentStatus === 'unpaid' && (
+                    <button
+                      onClick={() => handleStatusUpdate(null, 'payment-received')}
+                      disabled={isUpdating}
+                      className="flex-1 bg-emerald-600 text-white py-2 px-4 rounded-md hover:bg-emerald-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      💳 Mark Payment Received
+                    </button>
+                  )}
+                  {booking.paymentStatus === 'payment-received' && (
+                    <button
+                      onClick={() => handleStatusUpdate(null, 'payment-verified')}
+                      disabled={isUpdating}
+                      className="flex-1 bg-teal-600 text-white py-2 px-4 rounded-md hover:bg-teal-700 disabled:opacity-50 text-sm font-medium"
+                    >
+                      ✓ Verify Payment
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
           )}

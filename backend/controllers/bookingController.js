@@ -1,7 +1,20 @@
 const Booking = require('../models/Booking');
 const Service = require('../models/Service');
 const VendorProfile = require('../models/VendorProfile');
+const Notification = require('../models/Notification');
 const { validationResult } = require('express-validator');
+
+// Helper: create notifications
+const createNotifications = async ({ refId, refNumber, customerId, vendorUserId, type, title, message }) => {
+  try {
+    const notes = [];
+    if (customerId) notes.push({ recipient: customerId, type, title, message, orderId: refId, orderNumber: refNumber });
+    if (vendorUserId) notes.push({ recipient: vendorUserId, type, title, message, orderId: refId, orderNumber: refNumber });
+    if (notes.length) await Notification.insertMany(notes);
+  } catch (err) {
+    console.error('Notification error:', err.message);
+  }
+};
 
 /**
  * @desc    Create new booking
@@ -340,66 +353,57 @@ const getBooking = async (req, res) => {
 };
 
 /**
- * @desc    Update booking status
+ * @desc    Update booking status with payment tracking + notifications
  * @route   PUT /api/bookings/:id/status
  * @access  Private/Vendor
  */
 const updateBookingStatus = async (req, res) => {
   try {
-    const { status, notes } = req.body;
-    const validStatuses = [
-      'pending', 'confirmed', 'rescheduled', 'in-progress', 
-      'completed', 'cancelled', 'no-show', 'refunded'
-    ];
+    const { status, notes, paymentStatus } = req.body;
 
-    if (!validStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: 'Invalid status'
-      });
+    const validStatuses = ['pending', 'confirmed', 'rescheduled', 'in-progress', 'completed', 'cancelled', 'no-show', 'refunded'];
+    if (status && !validStatuses.includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+    if (paymentStatus && !['unpaid', 'payment-received', 'payment-verified', 'refunded'].includes(paymentStatus)) {
+      return res.status(400).json({ success: false, message: 'Invalid payment status' });
     }
 
-    // Get vendor profile
     const vendorProfile = await VendorProfile.findOne({ user: req.user.id });
-    if (!vendorProfile) {
-      return res.status(400).json({
-        success: false,
-        message: 'Vendor profile not found'
-      });
+    if (!vendorProfile) return res.status(400).json({ success: false, message: 'Vendor profile not found' });
+
+    const booking = await Booking.findById(req.params.id).populate('customer', 'name');
+    if (!booking) return res.status(404).json({ success: false, message: 'Booking not found' });
+    if (booking.vendor.toString() !== vendorProfile._id.toString()) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
-    const booking = await Booking.findById(req.params.id);
+    const changes = [];
 
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        message: 'Booking not found'
-      });
-    }
-
-    // Check if vendor has access to this booking
-    const hasAccess = booking.vendor.toString() === vendorProfile._id.toString();
-
-    if (!hasAccess) {
-      return res.status(403).json({
-        success: false,
-        message: 'Access denied'
-      });
-    }
-
-    // Update status and add to history
-    booking.status = status;
-    booking.addStatusHistory(status, notes || '', 'vendor');
-
-    // Update service timing for in-progress and completed status
-    if (status === 'in-progress') {
-      booking.serviceStartTime = new Date();
-    } else if (status === 'completed') {
-      booking.serviceEndTime = new Date();
-      if (booking.serviceStartTime) {
-        const durationMs = booking.serviceEndTime - booking.serviceStartTime;
-        booking.actualDuration = Math.round(durationMs / (1000 * 60)); // in minutes
+    // Update booking status
+    if (status && status !== booking.status) {
+      booking.status = status;
+      booking.addStatusHistory(status, notes || '', 'vendor');
+      if (status === 'in-progress') booking.serviceStartTime = new Date();
+      if (status === 'completed') {
+        booking.serviceEndTime = new Date();
+        if (booking.serviceStartTime) {
+          booking.actualDuration = Math.round((booking.serviceEndTime - booking.serviceStartTime) / 60000);
+        }
       }
+      changes.push(`Status: ${status.replace(/-/g, ' ')}`);
+    }
+
+    // Update payment status
+    if (paymentStatus && paymentStatus !== booking.paymentStatus) {
+      booking.paymentStatus = paymentStatus;
+      booking.statusHistory.push({
+        status: `payment:${paymentStatus}`,
+        timestamp: new Date(),
+        note: notes || '',
+        updatedBy: 'vendor'
+      });
+      changes.push(`Payment: ${paymentStatus.replace(/-/g, ' ')}`);
     }
 
     booking.updatedAt = Date.now();
@@ -411,18 +415,35 @@ const updateBookingStatus = async (req, res) => {
       { path: 'service', select: 'title images' }
     ]);
 
-    res.json({
-      success: true,
-      message: 'Booking status updated successfully',
-      data: { booking }
-    });
+    // Send notifications
+    if (changes.length) {
+      const statusLabels = {
+        confirmed: 'Your booking has been confirmed ✅',
+        'in-progress': 'Your service has started 🔄',
+        completed: 'Your service has been completed ✅',
+        cancelled: 'Your booking has been cancelled ❌',
+        'no-show': 'Booking marked as no-show',
+        'payment-received': 'Payment received for your booking 💳',
+        'payment-verified': 'Payment verified for your booking ✓'
+      };
+      const notifTitle = status ? (statusLabels[status] || `Booking: ${status}`) : (statusLabels[`payment-${paymentStatus?.split('-').slice(1).join('-')}`] || `Payment update`);
+      const notifMsg = `Booking #${booking.bookingNumber} — ${changes.join(', ')}${notes ? `. Note: ${notes}` : ''}`;
 
+      await createNotifications({
+        refId: booking._id,
+        refNumber: booking.bookingNumber,
+        customerId: booking.customer._id,
+        vendorUserId: req.user.id,
+        type: status ? 'order_status' : 'payment_status',
+        title: notifTitle,
+        message: notifMsg
+      });
+    }
+
+    res.json({ success: true, message: 'Booking updated successfully', data: { booking } });
   } catch (error) {
     console.error('Update booking status error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to update booking status'
-    });
+    res.status(500).json({ success: false, message: 'Failed to update booking status' });
   }
 };
 
@@ -641,9 +662,9 @@ const getVendorBookingStats = async (req, res) => {
       status: { $nin: ['cancelled', 'completed', 'no-show'] }
     });
 
-    // Calculate total revenue
+    // Calculate total revenue (only payment-verified bookings)
     const revenueResult = await Booking.aggregate([
-      { $match: { ...filter, status: 'completed' } },
+      { $match: { ...filter, status: 'completed', paymentStatus: 'payment-verified' } },
       { $group: { _id: null, totalRevenue: { $sum: '$totalAmount' } } }
     ]);
     const totalRevenue = revenueResult.length > 0 ? revenueResult[0].totalRevenue : 0;
