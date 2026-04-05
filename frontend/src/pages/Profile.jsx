@@ -339,8 +339,16 @@ const Profile = () => {
  * Allows vendors to set their business location via map or GPS
  */
 const VendorLocationSection = () => {
+  const { vendorProfile, updateVendorProfile } = useAuth();
+  const existingLocation = vendorProfile?.location;
+  const hasLocation = existingLocation?.coordinates?.[0] !== 0 || existingLocation?.coordinates?.[1] !== 0;
+
   const [showPicker, setShowPicker] = useState(false);
-  const [savedLocation, setSavedLocation] = useState(null);
+  const [savedLocation, setSavedLocation] = useState(
+    hasLocation
+      ? { lat: existingLocation.coordinates[1], lng: existingLocation.coordinates[0], address: existingLocation.address }
+      : null
+  );
   const [saving, setSaving] = useState(false);
   const [status, setStatus] = useState('');
 
@@ -349,7 +357,9 @@ const VendorLocationSection = () => {
     setShowPicker(false);
     try {
       await api.put('/auth/vendor/location', { lat, lng, address });
-      setSavedLocation({ lat, lng, address });
+      const loc = { lat, lng, address };
+      setSavedLocation(loc);
+      updateVendorProfile({ location: { type: 'Point', coordinates: [lng, lat], address } });
       setStatus(`✅ Location saved: ${address}`);
     } catch {
       setStatus('❌ Failed to save location. Try again.');
@@ -368,9 +378,16 @@ const VendorLocationSection = () => {
         <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
           <span className="text-green-600 text-lg">📌</span>
           <div>
-            <p className="text-sm font-medium text-green-800">{savedLocation.address}</p>
+            <p className="text-sm font-medium text-green-800">{savedLocation.address || 'Location set'}</p>
             <p className="text-xs text-green-600 mt-0.5">{savedLocation.lat.toFixed(5)}, {savedLocation.lng.toFixed(5)}</p>
           </div>
+        </div>
+      )}
+
+      {!savedLocation && (
+        <div className="flex items-start gap-2 bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+          <span className="text-yellow-600 text-lg">⚠️</span>
+          <p className="text-sm text-yellow-800">No location set yet. Customers won't find you in location-based searches.</p>
         </div>
       )}
 
@@ -380,7 +397,7 @@ const VendorLocationSection = () => {
           disabled={saving}
           className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 text-sm font-medium"
         >
-          🗺️ {savedLocation ? 'Change Location' : 'Set Business Location'}
+          🗺️ {savedLocation ? 'Update Location' : 'Set Business Location'}
         </button>
       </div>
 
