@@ -19,7 +19,7 @@ const AUTH_ACTIONS = {
   REGISTER_SUCCESS: 'REGISTER_SUCCESS',
   REGISTER_FAILURE: 'REGISTER_FAILURE',
   LOAD_USER_SUCCESS: 'LOAD_USER_SUCCESS',
-  LOAD_USER_FAILURE: 'LOAD_USER_FLURE',
+  LOAD_USER_FAILURE: 'LOAD_USER_FAILURE',
   LOGOUT: 'LOGOUT',
   CLEAR_ERROR: 'CLEAR_ERROR',
   UPDATE_PROFILE: 'UPDATE_PROFILE',
@@ -35,7 +35,7 @@ const authReducer = (state, action) => {
 
     case AUTH_ACTIONS.LOGIN_SUCCESS:
     case AUTH_ACTIONS.REGISTER_SUCCESS:
-      localStorage.setItem('token'.token);
+      localStorage.setItem('token', action.payload.token);
       return {
         ...state,
         user: action.payload.user,
@@ -68,7 +68,7 @@ const authReducer = (state, action) => {
         error: null
       };
 
-    ca AUTH_ACTIONS.LOAD_USER_FAILURE:
+    case AUTH_ACTIONS.LOAD_USER_FAILURE:
       localStorage.removeItem('token');
       return {
         ...state,
@@ -172,7 +172,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.UPDATE_PROFILE, payload: response.data.user });
       return { success: true };
     } catch (error) {
-      rete update failed' };
+      return { success: false, error: error.response?.data?.message || 'Profile update failed' };
     }
   }, []);
 
