@@ -21,7 +21,7 @@ const Dashboard = () => {
   }, [user, navigate]);
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
+    if (user?.role !== 'admin' && user?.role !== 'rider') {
       fetchDashboardData();
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
