@@ -103,11 +103,54 @@ const orderSchema = new mongoose.Schema({
     enum: ['home-delivery', 'self-pickup'],
     required: true
   },
-  
+
+  // Rider Assignment
+  rider: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'RiderProfile',
+    default: null
+  },
+
+  // Pickup location (vendor's coordinates at time of order)
+  pickupLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      default: [0, 0]
+    },
+    address: { type: String, default: '' }
+  },
+
+  // Delivery location (customer address as coordinates — optional, set if geocoded)
+  deliveryLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0]
+    }
+  },
+
+  // Rider delivery timestamps
+  assignedAt: { type: Date, default: null },
+  pickedAt:   { type: Date, default: null },
+  deliveredAt:{ type: Date, default: null },
+
   // Order Status Management
   status: {
     type: String,
-    enum: ['pending', 'confirmed', 'preparing', 'ready', 'out-for-delivery', 'delivered', 'cancelled', 'returned'],
+    enum: [
+      'pending', 'confirmed', 'preparing', 'ready',
+      'assigned-to-rider', 'picked-up', 'out-for-delivery',
+      'delivered', 'cancelled', 'returned'
+    ],
     default: 'pending'
   },
   
@@ -183,6 +226,7 @@ const orderSchema = new mongoose.Schema({
 // Indexes for better performance
 orderSchema.index({ customer: 1 });
 orderSchema.index({ vendor: 1 });
+orderSchema.index({ rider: 1 });
 orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ status: 1 });
 orderSchema.index({ orderDate: -1 });

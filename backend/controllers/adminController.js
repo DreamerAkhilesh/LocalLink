@@ -1,17 +1,19 @@
 const User = require('../models/User');
 const VendorProfile = require('../models/VendorProfile');
+const RiderProfile = require('../models/RiderProfile');
 const Product = require('../models/Product');
 const Service = require('../models/Service');
 const Order = require('../models/Order');
 const Booking = require('../models/Booking');
 const Notification = require('../models/Notification');
 
-// Helper: notify vendor
+// Helper: notify user
 const notifyVendor = async (userId, title, message) => {
   try {
     await Notification.create({ recipient: userId, type: 'order_status', title, message });
   } catch (e) { /* silent */ }
 };
+const notify = notifyVendor;
 
 /**
  * GET /api/admin/stats
@@ -22,7 +24,8 @@ const getStats = async (req, res) => {
       totalUsers, totalVendors, pendingVendors, verifiedVendors, rejectedVendors,
       totalProducts, pendingProducts, activeProducts,
       totalServices, pendingServices, activeServices,
-      totalOrders, totalBookings
+      totalOrders, totalBookings,
+      totalRiders, pendingRiders, verifiedRiders
     ] = await Promise.all([
       User.countDocuments(),
       User.countDocuments({ role: 'vendor' }),
@@ -36,7 +39,10 @@ const getStats = async (req, res) => {
       Service.countDocuments({ status: 'pending-approval' }),
       Service.countDocuments({ status: 'active' }),
       Order.countDocuments(),
-      Booking.countDocuments()
+      Booking.countDocuments(),
+      RiderProfile.countDocuments(),
+      RiderProfile.countDocuments({ verificationStatus: 'pending' }),
+      RiderProfile.countDocuments({ verificationStatus: 'verified' })
     ]);
 
     res.json({
@@ -46,6 +52,7 @@ const getStats = async (req, res) => {
         vendors: { pending: pendingVendors, verified: verifiedVendors, rejected: rejectedVendors },
         products: { total: totalProducts, pending: pendingProducts, active: activeProducts },
         services: { total: totalServices, pending: pendingServices, active: activeServices },
+        riders: { total: totalRiders, pending: pendingRiders, verified: verifiedRiders },
         orders: totalOrders,
         bookings: totalBookings
       }
@@ -284,9 +291,173 @@ const getUsers = async (req, res) => {
   }
 };
 
+/**
+ * GET /api/admin/riders?status=pending|verified|rejected|all
+ */
+const getRiders = async (req, res) => {
+  try {
+    const { status = 'pending', page = 1, limit = 20 } = req.query;
+    const filter = status !== 'all' ? { verificationStatus: status } : {};
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    const riders = await RiderProfile.find(filter)
+      .populate('user', 'name email phone createdAt')
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await RiderProfile.countDocuments(filter);
+    res.json({ success: true, data: { riders, total } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch riders' });
+  }
+};
+
+/**
+ * PUT /api/admin/riders/:id/approve
+ */
+const approveRider = async (req, res) => {
+  try {
+    const rider = await RiderProfile.findById(req.params.id).populate('user', 'name _id');
+    if (!rider) return res.status(404).json({ success: false, message: 'Rider not found' });
+
+    rider.isVerified = true;
+    rider.verificationStatus = 'verified';
+    rider.verificationNote = '';
+    await rider.save();
+
+    await notify(rider.user._id, '✅ Rider Account Approved',
+      `Congratulations ${rider.user.name}! Your rider account has been verified. You can now go online and accept deliveries.`);
+
+    res.json({ success: true, message: 'Rider approved', data: { rider } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to approve rider' });
+  }
+};
+
+/**
+ * PUT /api/admin/riders/:id/reject
+ */
+const rejectRider = async (req, res) => {
+  try {
+    const { reason = 'Does not meet requirements' } = req.body;
+    const rider = await RiderProfile.findById(req.params.id).populate('user', 'name _id');
+    if (!rider) return res.status(404).json({ success: false, message: 'Rider not found' });
+
+    rider.isVerified = false;
+    rider.verificationStatus = 'rejected';
+    rider.verificationNote = reason;
+    await rider.save();
+
+    await notify(rider.user._id, '❌ Rider Account Rejected',
+      `Your rider application was rejected. Reason: ${reason}`);
+
+    res.json({ success: true, message: 'Rider rejected', data: { rider } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to reject rider' });
+  }
+};
+
+/**
+ * PUT /api/admin/orders/:id/assign-rider
+ * Admin manually assigns a rider to a ready order
+ */
+const assignRider = async (req, res) => {
+  try {
+    const { riderId } = req.body;
+    if (!riderId) {
+      return res.status(400).json({ success: false, message: 'riderId is required' });
+    }
+
+    const order = await Order.findById(req.params.id)
+      .populate('customer', 'name _id')
+      .populate('vendor', 'businessName location user');
+
+    if (!order) return res.status(404).json({ success: false, message: 'Order not found' });
+
+    if (order.status !== 'ready') {
+      return res.status(400).json({
+        success: false,
+        message: `Order must be in 'ready' status to assign a rider. Current: ${order.status}`
+      });
+    }
+
+    const rider = await RiderProfile.findById(riderId).populate('user', 'name _id');
+    if (!rider) return res.status(404).json({ success: false, message: 'Rider not found' });
+
+    if (!rider.isVerified) {
+      return res.status(400).json({ success: false, message: 'Rider is not verified' });
+    }
+    if (!rider.isAvailable || rider.status !== 'idle') {
+      return res.status(400).json({ success: false, message: 'Rider is not available' });
+    }
+
+    // Assign rider to order
+    order.rider = rider._id;
+    order.status = 'assigned-to-rider';
+    order.assignedAt = new Date();
+
+    // Copy vendor location as pickup location
+    if (order.vendor?.location) {
+      order.pickupLocation = {
+        type: 'Point',
+        coordinates: order.vendor.location.coordinates,
+        address: order.vendor.location.address || order.vendor.businessName
+      };
+    }
+
+    order.statusHistory.push({
+      status: 'assigned-to-rider',
+      timestamp: new Date(),
+      note: `Rider ${rider.user.name} assigned by admin`,
+      updatedBy: req.user.id
+    });
+    await order.save();
+
+    // Update rider status
+    rider.status = 'assigned';
+    rider.currentOrder = order._id;
+    await rider.save();
+
+    // Notify rider
+    await notify(rider.user._id, '📦 New Delivery Assigned',
+      `You have been assigned order #${order.orderNumber}. Please accept and pick it up from ${order.pickupLocation?.address || 'the vendor'}.`);
+
+    // Notify customer
+    await notify(order.customer._id, '🛵 Rider Assigned',
+      `A rider has been assigned to your order #${order.orderNumber}.`);
+
+    res.json({ success: true, message: 'Rider assigned successfully', data: { order } });
+  } catch (error) {
+    console.error('Assign rider error:', error);
+    res.status(500).json({ success: false, message: 'Failed to assign rider' });
+  }
+};
+
+/**
+ * GET /api/admin/riders/available
+ * Get list of available (idle + verified) riders for assignment
+ */
+const getAvailableRiders = async (req, res) => {
+  try {
+    const riders = await RiderProfile.find({
+      isVerified: true,
+      isAvailable: true,
+      status: 'idle'
+    }).populate('user', 'name phone');
+
+    res.json({ success: true, data: { riders } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to fetch available riders' });
+  }
+};
+
+// Re-export everything including new rider functions
 module.exports = {
   getStats, getVendors, approveVendor, rejectVendor,
   getProducts, approveProduct, rejectProduct,
   getServices, approveService, rejectService,
-  getUsers
+  getUsers,
+  getRiders, approveRider, rejectRider,
+  assignRider, getAvailableRiders
 };

@@ -147,9 +147,35 @@ const requireVerifiedVendor = async (req, res, next) => {
   }
 };
 
+/**
+ * Verified Rider Middleware
+ * Blocks delivery actions if rider is not verified by admin
+ */
+const requireVerifiedRider = async (req, res, next) => {
+  try {
+    const RiderProfile = require('../models/RiderProfile');
+    const riderProfile = await RiderProfile.findOne({ user: req.user.id });
+    if (!riderProfile) {
+      return res.status(400).json({ success: false, message: 'Rider profile not found' });
+    }
+    if (!riderProfile.isVerified) {
+      return res.status(403).json({
+        success: false,
+        message: 'Your rider account is pending admin verification.',
+        verificationStatus: riderProfile.verificationStatus || 'pending'
+      });
+    }
+    req.riderProfile = riderProfile;
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Authorization check failed' });
+  }
+};
+
 module.exports = {
   authenticate,
   authorize,
   optionalAuth,
-  requireVerifiedVendor
+  requireVerifiedVendor,
+  requireVerifiedRider
 };

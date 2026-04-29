@@ -11,6 +11,7 @@ import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
 import AdminRoute from './components/AdminRoute';
+import RiderRoute from './components/RiderRoute';
 import LocationBar from './components/LocationBar';
 
 // Pages
@@ -28,23 +29,27 @@ import AddProduct from './pages/AddProduct';
 import AddService from './pages/AddService';
 import ProductDetail from './pages/ProductDetail';
 import ServiceDetail from './pages/ServiceDetail';
+
+// Admin pages
 import AdminDashboard from './pages/admin/AdminDashboard';
 import AdminVendors from './pages/admin/AdminVendors';
 import AdminProducts from './pages/admin/AdminProducts';
 import AdminServices from './pages/admin/AdminServices';
+import AdminRiders from './pages/admin/AdminRiders';
+import AdminOrderAssignment from './pages/admin/AdminOrderAssignment';
 
-/**
- * AppLayout — inside Router so it can use hooks
- * Hides LocationBar for admin users
- */
+// Rider pages
+import RiderDashboard from './pages/rider/RiderDashboard';
+
 const AppLayout = () => {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
+  const isRider = user?.role === 'rider';
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
-      {!isAdmin && <LocationBar />}
+      {!isAdmin && !isRider && <LocationBar />}
 
       <main className="flex-grow">
         <Routes>
@@ -57,7 +62,7 @@ const AppLayout = () => {
           <Route path="/services" element={<Services />} />
           <Route path="/services/:id" element={<ServiceDetail />} />
 
-          {/* Protected */}
+          {/* Protected (customer/vendor) */}
           <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
@@ -70,11 +75,16 @@ const AppLayout = () => {
           <Route path="/services/new" element={<ProtectedRoute><AddService /></ProtectedRoute>} />
           <Route path="/services/:id/edit" element={<ProtectedRoute><AddService /></ProtectedRoute>} />
 
+          {/* Rider */}
+          <Route path="/rider" element={<RiderRoute><RiderDashboard /></RiderRoute>} />
+
           {/* Admin */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
           <Route path="/admin/vendors" element={<AdminRoute><AdminVendors /></AdminRoute>} />
           <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
           <Route path="/admin/services" element={<AdminRoute><AdminServices /></AdminRoute>} />
+          <Route path="/admin/riders" element={<AdminRoute><AdminRiders /></AdminRoute>} />
+          <Route path="/admin/orders/assign" element={<AdminRoute><AdminOrderAssignment /></AdminRoute>} />
 
           {/* 404 */}
           <Route path="*" element={

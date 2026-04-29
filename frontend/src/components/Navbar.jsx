@@ -15,6 +15,7 @@ const Navbar = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
 
   const isAdmin = user?.role === 'admin';
+  const isRider = user?.role === 'rider';
 
   const handleLogout = () => {
     logout();
@@ -30,38 +31,24 @@ const Navbar = () => {
       <nav className="bg-gray-900 shadow-lg sticky top-0 z-30">
         <div className="container mx-auto px-4">
           <div className="flex justify-between items-center h-16">
-            {/* Logo */}
             <Link to="/admin" className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-red-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-sm">A</span>
               </div>
               <span className="text-xl font-bold text-white">Local Link <span className="text-red-400 text-sm font-normal">Admin</span></span>
             </Link>
-
-            {/* Admin nav links */}
             <div className="hidden md:flex items-center space-x-6">
-              <Link to="/admin" className={`text-sm font-medium transition-colors ${isActivePath('/admin') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
-                Dashboard
-              </Link>
-              <Link to="/admin/vendors" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/vendors') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
-                Vendors
-              </Link>
-              <Link to="/admin/products" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/products') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
-                Products
-              </Link>
-              <Link to="/admin/services" className={`text-sm font-medium transition-colors ${location.pathname.startsWith('/admin/services') ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
-                Services
-              </Link>
+              {[['Dashboard','/admin'],['Vendors','/admin/vendors'],['Products','/admin/products'],['Services','/admin/services'],['Riders','/admin/riders'],['Assign Orders','/admin/orders/assign']].map(([label, path]) => (
+                <Link key={path} to={path} className={`text-sm font-medium transition-colors ${location.pathname.startsWith(path) && path !== '/admin' ? 'text-white' : isActivePath(path) ? 'text-white' : 'text-gray-400 hover:text-white'}`}>
+                  {label}
+                </Link>
+              ))}
             </div>
-
-            {/* Right: notification + user */}
             <div className="flex items-center space-x-3">
               <NotificationBell />
               <div className="relative">
-                <button
-                  onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
-                  className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors"
-                >
+                <button onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center space-x-2 text-gray-300 hover:text-white transition-colors">
                   <div className="w-8 h-8 bg-red-600 rounded-full flex items-center justify-center">
                     <span className="text-white font-medium text-sm">{user?.name?.charAt(0)?.toUpperCase()}</span>
                   </div>
@@ -70,33 +57,61 @@ const Navbar = () => {
                 {isProfileDropdownOpen && (
                   <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg py-1 z-50">
                     <div className="px-4 py-2 text-xs text-gray-500 border-b">Admin Account</div>
-                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">
-                      Logout
-                    </button>
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
                   </div>
                 )}
               </div>
-              {/* Mobile menu button */}
               <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="md:hidden p-2 text-gray-400 hover:text-white">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  {isMenuOpen
-                    ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
+                  {isMenuOpen ? <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /> : <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />}
                 </svg>
               </button>
             </div>
           </div>
-
-          {/* Mobile admin menu */}
           {isMenuOpen && (
             <div className="md:hidden border-t border-gray-700 py-4 space-y-3">
-              {[['Dashboard', '/admin'], ['Vendors', '/admin/vendors'], ['Products', '/admin/products'], ['Services', '/admin/services']].map(([label, path]) => (
-                <Link key={path} to={path} onClick={() => setIsMenuOpen(false)}
-                  className="block text-gray-300 hover:text-white text-sm">{label}</Link>
+              {[['Dashboard','/admin'],['Vendors','/admin/vendors'],['Products','/admin/products'],['Services','/admin/services'],['Riders','/admin/riders'],['Assign Orders','/admin/orders/assign']].map(([label, path]) => (
+                <Link key={path} to={path} onClick={() => setIsMenuOpen(false)} className="block text-gray-300 hover:text-white text-sm">{label}</Link>
               ))}
               <button onClick={handleLogout} className="block text-red-400 hover:text-red-300 text-sm mt-2">Logout</button>
             </div>
           )}
+        </div>
+      </nav>
+    );
+  }
+
+  // ── RIDER NAVBAR ──────────────────────────────────────────────
+  if (isRider) {
+    return (
+      <nav className="bg-blue-900 shadow-lg sticky top-0 z-30">
+        <div className="container mx-auto px-4">
+          <div className="flex justify-between items-center h-16">
+            <Link to="/rider" className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">🛵</span>
+              </div>
+              <span className="text-xl font-bold text-white">Local Link <span className="text-blue-300 text-sm font-normal">Rider</span></span>
+            </Link>
+            <div className="flex items-center space-x-3">
+              <NotificationBell />
+              <div className="relative">
+                <button onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                  className="flex items-center space-x-2 text-blue-200 hover:text-white transition-colors">
+                  <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
+                    <span className="text-white font-medium text-sm">{user?.name?.charAt(0)?.toUpperCase()}</span>
+                  </div>
+                  <span className="hidden md:block text-sm">{user?.name}</span>
+                </button>
+                {isProfileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-44 bg-white rounded-md shadow-lg py-1 z-50">
+                    <div className="px-4 py-2 text-xs text-gray-500 border-b">Rider Account</div>
+                    <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
         </div>
       </nav>
     );
@@ -170,8 +185,7 @@ const Navbar = () => {
                           <Link to="/orders" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Manage Orders</Link>
                           <Link to="/bookings" className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" onClick={() => setIsProfileDropdownOpen(false)}>Manage Bookings</Link>
                         </>
-                      )}
-                      <div className="border-t">
+                      )}                      <div className="border-t">
                         <button onClick={handleLogout} className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100">Logout</button>
                       </div>
                     </div>

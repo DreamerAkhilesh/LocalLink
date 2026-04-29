@@ -63,8 +63,20 @@ const register = async (req, res) => {
         category: businessInfo.category,
         description: businessInfo.description
       });
-      
       await vendorProfile.save();
+    }
+
+    // If user is a rider, create rider profile
+    if (user.role === 'rider') {
+      const RiderProfile = require('../models/RiderProfile');
+      const riderInfo = req.body.riderInfo || {};
+      const riderProfile = new RiderProfile({
+        user: user._id,
+        phone: phone,
+        vehicleType: riderInfo.vehicleType || 'bike',
+        vehicleNumber: riderInfo.vehicleNumber || ''
+      });
+      await riderProfile.save();
     }
     
     // Generate token
@@ -151,6 +163,13 @@ const login = async (req, res) => {
     if (user.role === 'vendor') {
       vendorProfile = await VendorProfile.findOne({ user: user._id });
     }
+
+    // Get rider profile if user is a rider
+    let riderProfile = null;
+    if (user.role === 'rider') {
+      const RiderProfile = require('../models/RiderProfile');
+      riderProfile = await RiderProfile.findOne({ user: user._id });
+    }
     
     res.json({
       success: true,
@@ -166,6 +185,7 @@ const login = async (req, res) => {
           isVerified: user.isVerified
         },
         vendorProfile,
+        riderProfile,
         token
       }
     });
@@ -194,12 +214,20 @@ const getProfile = async (req, res) => {
     if (user.role === 'vendor') {
       vendorProfile = await VendorProfile.findOne({ user: user._id });
     }
+
+    // Get rider profile if user is a rider
+    let riderProfile = null;
+    if (user.role === 'rider') {
+      const RiderProfile = require('../models/RiderProfile');
+      riderProfile = await RiderProfile.findOne({ user: user._id });
+    }
     
     res.json({
       success: true,
       data: {
         user,
-        vendorProfile
+        vendorProfile,
+        riderProfile
       }
     });
     

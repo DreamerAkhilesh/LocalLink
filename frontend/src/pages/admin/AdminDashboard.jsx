@@ -34,7 +34,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Pending alerts */}
-      {(stats?.vendors?.pending > 0 || stats?.products?.pending > 0 || stats?.services?.pending > 0) && (
+      {(stats?.vendors?.pending > 0 || stats?.products?.pending > 0 || stats?.services?.pending > 0 || stats?.riders?.pending > 0) && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-xl px-5 py-4 mb-6 flex flex-wrap gap-4">
           <span className="font-medium text-yellow-800">⚠️ Pending approvals:</span>
           {stats.vendors.pending > 0 && (
@@ -46,6 +46,9 @@ const AdminDashboard = () => {
           {stats.services.pending > 0 && (
             <Link to="/admin/services" className="text-yellow-700 underline">{stats.services.pending} service{stats.services.pending > 1 ? 's' : ''}</Link>
           )}
+          {stats?.riders?.pending > 0 && (
+            <Link to="/admin/riders" className="text-yellow-700 underline">{stats.riders.pending} rider{stats.riders.pending > 1 ? 's' : ''}</Link>
+          )}
         </div>
       )}
 
@@ -53,8 +56,12 @@ const AdminDashboard = () => {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <StatCard label="Total Users" value={stats?.users?.total} color="text-gray-900" to="/admin/users" />
         <StatCard label="Total Vendors" value={stats?.users?.vendors} color="text-blue-600" to="/admin/vendors?status=all" />
+        <StatCard label="Total Riders" value={stats?.riders?.total} color="text-indigo-600" to="/admin/riders?status=all" />
         <StatCard label="Total Orders" value={stats?.orders} color="text-yellow-600" />
         <StatCard label="Total Bookings" value={stats?.bookings} color="text-purple-600" />
+        <StatCard label="Pending Riders" value={stats?.riders?.pending} color="text-orange-600" to="/admin/riders" />
+        <StatCard label="Active Products" value={stats?.products?.active} color="text-green-600" to="/admin/products?status=active" />
+        <StatCard label="Active Services" value={stats?.services?.active} color="text-teal-600" to="/admin/services?status=active" />
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

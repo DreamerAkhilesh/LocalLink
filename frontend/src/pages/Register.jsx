@@ -30,6 +30,10 @@ const Register = () => {
       businessType: 'shop',
       category: '',
       description: ''
+    },
+    riderInfo: {
+      vehicleType: 'bike',
+      vehicleNumber: ''
     }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -111,6 +115,11 @@ const Register = () => {
       if (formData.role === 'vendor') {
         registrationData.businessInfo = formData.businessInfo;
       }
+
+      // Add rider info for riders
+      if (formData.role === 'rider') {
+        registrationData.riderInfo = formData.riderInfo;
+      }
       
       const result = await register(registrationData);
       if (result?.success === false) return;
@@ -127,7 +136,12 @@ const Register = () => {
         } catch { /* non-critical, vendor can set it from profile */ }
       }
 
-      navigate('/dashboard');
+      // Redirect based on role
+      if (formData.role === 'rider') {
+        navigate('/rider');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err) {
       console.error('Registration error:', err);
     } finally {
@@ -165,7 +179,7 @@ const Register = () => {
               <label className="block text-sm font-medium text-gray-700">
                 Account Type
               </label>
-              <div className="mt-1 grid grid-cols-2 gap-3">
+              <div className="mt-1 grid grid-cols-3 gap-3">
                 <button
                   type="button"
                   onClick={() => setFormData(prev => ({ ...prev, role: 'customer' }))}
@@ -187,6 +201,17 @@ const Register = () => {
                   } border rounded-md py-2 px-3 text-sm font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500`}
                 >
                   Vendor
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFormData(prev => ({ ...prev, role: 'rider' }))}
+                  className={`${
+                    formData.role === 'rider'
+                      ? 'bg-primary-600 text-white'
+                      : 'bg-white text-gray-700 border-gray-300'
+                  } border rounded-md py-2 px-3 text-sm font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500`}
+                >
+                  🛵 Rider
                 </button>
               </div>
             </div>
@@ -506,7 +531,46 @@ const Register = () => {
                 initialLng={locationData?.lng}
               />
             )}
-            
+
+            {/* Rider Information */}
+            {formData.role === 'rider' && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-medium text-gray-900">Rider Information</h3>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
+                  <select
+                    name="riderInfo.vehicleType"
+                    value={formData.riderInfo.vehicleType}
+                    onChange={handleChange}
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  >
+                    <option value="bike">Bike</option>
+                    <option value="scooter">Scooter</option>
+                    <option value="cycle">Cycle</option>
+                    <option value="car">Car</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Vehicle Number <span className="text-gray-400 font-normal">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="riderInfo.vehicleNumber"
+                    value={formData.riderInfo.vehicleNumber}
+                    onChange={handleChange}
+                    placeholder="e.g. UP32 AB 1234"
+                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
+                  />
+                </div>
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-700">
+                    ℹ️ Your account will be reviewed by admin before you can start accepting deliveries.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Error Display */}
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
