@@ -1,758 +1,299 @@
-# Local Link - Development Status & Feature Documentation
+# Local Link — Development Status
 
-## 🎯 **Current Status: FULLY FUNCTIONAL MVP WITH COMPLETE ORDER & BOOKING MANAGEMENT**
-**Deployment Status**: ✅ **LIVE & RUNNING**
-- Backend API: http://localhost:5000 ✅ Active
-- Frontend App: http://localhost:3000 ✅ Active
-- Database: MongoDB Local ✅ Connected
+## Project Overview
+Local Link is a community-based marketplace platform built with the MERN stack (MongoDB, Express, React, Node.js). It connects local vendors (shops and service providers) with nearby customers. Vendors can list products and services; customers can browse, order, and book them. An admin panel manages vendor verification and content approval.
 
----
-
-## 🏗️ **COMPLETE FEATURE BREAKDOWN**
-
-### 🔐 **AUTHENTICATION & USER MANAGEMENT**
-
-#### ✅ **User Registration System**
-- **Dual Role Registration**: Customer & Vendor account types
-- **Complete Form Validation**: 
-  - Email format validation
-  - Password strength requirements (6+ chars, uppercase, lowercase, number)
-  - Phone number validation (10 digits)
-  - Address validation (street, city, pincode, state)
-- **Vendor-Specific Fields**:
-  - Business name and description
-  - Business type (Shop/Service)
-  - Category selection
-- **Real-time Form Validation**: Instant feedback on form errors
-- **Password Confirmation**: Ensures password accuracy
-
-#### ✅ **User Login System**
-- **JWT-based Authentication**: Secure token-based login
-- **Role-based Redirects**: Automatic dashboard routing based on user role
-- **Remember Me Functionality**: Persistent login sessions
-- **Error Handling**: Clear feedback for invalid credentials
-- **Auto-redirect**: Prevents authenticated users from accessing login/register
-
-#### ✅ **User Profile Management**
-- **View Profile**: Complete user information display
-- **Edit Profile**: Update personal information
-- **Address Management**: Modify address details
-- **Business Profile**: Vendor-specific business information display
-- **Security Section**: Password change functionality (UI ready)
-- **Role-based Profile Views**: Different layouts for customers vs vendors
-
-### 🏪 **PRODUCT MANAGEMENT SYSTEM**
-
-#### ✅ **Product Browsing (Public)**
-- **Advanced Search**: Text-based product search across name, description, tags
-- **Category Filtering**: Filter by product categories
-  - Grocery, Electronics, Clothing, Home & Garden
-  - Health & Beauty, Books & Stationery, Sports & Fitness
-  - Toys & Games, Automotive, Other
-- **Price Range Filtering**: Min/Max price filters
-- **Sorting Options**: 
-  - By date (newest/oldest)
-  - By price (low to high / high to low)
-  - By name (A-Z / Z-A)
-- **Pagination**: Efficient loading with page navigation
-- **Responsive Grid**: Mobile-friendly product cards
-- **Product Cards Display**:
-  - Product images with fallback placeholders
-  - Name, description, and pricing
-  - Vendor information
-  - Stock availability
-  - Quick action buttons
-
-#### ✅ **Vendor Product Management**
-- **Create Products**: Full product creation form
-- **Edit Products**: Update existing product details
-- **Delete Products**: Soft delete (mark as inactive)
-- **Inventory Management**: Stock tracking and updates
-- **Image Management**: Multiple product images support
-- **Product Categories**: Comprehensive category system
-- **Pricing & Units**: Flexible pricing with various units (piece, kg, liter, etc.)
-- **Product Status**: Active/Inactive product management
-- **Vendor Dashboard Integration**: Quick access to product management
-
-### 🛠️ **SERVICE MANAGEMENT SYSTEM**
-
-#### ✅ **Service Discovery (Public)**
-- **Service Search**: Text-based search across service titles and descriptions
-- **Category-based Filtering**:
-  - Home Services, Beauty & Wellness, Education & Tutoring
-  - Health & Medical, Repair & Maintenance, Cleaning
-  - Transportation, Event Services, Professional Services
-- **Price Range Filtering**: Service price filtering
-- **Flexible Pricing Display**: 
-  - Fixed pricing, Hourly rates, Per-visit pricing, Negotiable rates
-- **Service Duration**: Estimated time display
-- **Sorting & Pagination**: Same advanced options as products
-- **Service Cards Display**:
-  - Service images with professional placeholders
-  - Title, description, and pricing structure
-  - Service provider information
-  - Duration estimates
-  - Category badges
-
-#### ✅ **Vendor Service Management**
-- **Create Services**: Comprehensive service creation
-- **Flexible Pricing Models**:
-  - Fixed price services
-  - Hourly rate services
-  - Per-visit pricing
-  - Negotiable pricing
-- **Service Duration Management**: Estimated time tracking
-- **Service Categories**: Professional service categorization
-- **Edit/Delete Services**: Full CRUD operations
-- **Service Status Management**: Active/Inactive controls
-
-### � **ORDER MANAGEMENT SYSTEM** ⭐ **NEW - FULLY IMPLEMENTED**
-
-#### ✅ **Shopping Cart System**
-- **Add to Cart**: Products can be added to shopping cart
-- **Cart Context**: Global cart state management with React Context
-- **Quantity Management**: Increase/decrease item quantities
-- **Stock Validation**: Prevents adding more items than available stock
-- **Cart Persistence**: Cart data persists in localStorage
-- **Real-time Totals**: Automatic calculation of cart totals
-- **Remove Items**: Individual item removal from cart
-- **Clear Cart**: Complete cart clearing functionality
-
-#### ✅ **Checkout Process**
-- **Complete Checkout Form**: Professional checkout interface
-- **Delivery Options**:
-  - Home Delivery (with address form)
-  - Self Pickup (from vendor location)
-- **Payment Methods**:
-  - Cash on Delivery
-  - Pay at Shop
-- **Address Management**: 
-  - Auto-populate from user profile
-  - Custom delivery address input
-  - Full address validation (name, phone, street, city, pincode, state)
-- **Order Notes**: Optional customer notes for vendors
-- **Order Summary**: Complete order review before placement
-- **Form Validation**: Comprehensive validation with error messages
-
-#### ✅ **Order Processing Backend**
-- **Multi-Vendor Support**: Automatically creates separate orders for different vendors
-- **Stock Management**: 
-  - Real-time stock validation during order placement
-  - Automatic stock deduction on successful orders
-  - Stock restoration on order cancellation
-- **Order Number Generation**: Unique order numbers (ORD + timestamp + sequence)
-- **Order Status Tracking**: Complete order lifecycle management
-  - Pending → Confirmed → Preparing → Ready → Out for Delivery → Delivered
-  - Cancellation and return support
-- **Status History**: Complete timeline tracking with timestamps and notes
-
-#### ✅ **Customer Order Management**
-- **Order History Page**: Complete order history with professional UI
-- **Order Filtering**: Filter by status (All, Pending, Confirmed, Preparing, etc.)
-- **Order Sorting**: Sort by newest/oldest first
-- **Order Details Modal**: Comprehensive order information display
-  - Order summary with status badges
-  - Complete item list with pricing
-  - Delivery address information
-  - Payment method and status
-  - Order timeline with status history
-  - Customer notes display
-- **Order Actions**:
-  - View detailed order information
-  - Cancel orders (for pending/confirmed orders)
-  - Track order status in real-time
-
-#### ✅ **Vendor Order Management Dashboard**
-- **Order Statistics Dashboard**: 
-  - Total orders, Pending, Confirmed, Preparing, Ready, Delivered counts
-  - Visual statistics cards with color coding
-- **Order Management Interface**:
-  - List all orders for vendor's products
-  - Filter by order status
-  - Sort by date (newest/oldest)
-- **Order Status Updates**:
-  - One-click status progression (Confirm → Preparing → Ready → etc.)
-  - Add notes when updating status
-  - Real-time status update with history tracking
-- **Vendor Order Details Modal**:
-  - Complete customer information (name, phone, email)
-  - Delivery information and address
-  - Order items with quantities and pricing
-  - Status update interface with notes
-  - Complete order timeline
-- **Order Actions**:
-  - Update order status with notes
-  - View complete order details
-  - Access customer contact information
-
-#### ✅ **Order API Endpoints**
-- **Customer Endpoints**:
-  - `POST /api/orders` - Create new order (with multi-vendor support)
-  - `GET /api/orders` - Get customer orders (with pagination, filtering, sorting)
-  - `GET /api/orders/:id` - Get single order details
-  - `PUT /api/orders/:id/cancel` - Cancel order (with stock restoration)
-- **Vendor Endpoints**:
-  - `GET /api/orders/vendor` - Get vendor orders (with pagination, filtering)
-  - `PUT /api/orders/:id/status` - Update order status (vendor only)
-- **Security**: Role-based access control for all order endpoints
-
-#### ✅ **Order System Features**
-- **Role-based UI**: Different interfaces for customers vs vendors
-- **Real-time Updates**: Status changes reflect immediately
-- **Stock Integration**: Seamless integration with product inventory
-- **Error Handling**: Comprehensive error management and user feedback
-- **Responsive Design**: Mobile-friendly order management interfaces
-- **Professional UI**: Clean, intuitive interfaces with proper loading states
-
-### 📅 **BOOKING MANAGEMENT SYSTEM** ⭐ **NEW - FULLY IMPLEMENTED**
-
-#### ✅ **Service Booking Interface**
-- **Service Discovery**: Browse and search services with advanced filtering
-- **Professional Booking Modal**: Comprehensive booking form with validation
-- **Service Location Options**:
-  - Home Service (with address collection)
-  - Vendor Location (at service provider's place)
-  - Online Service (virtual appointments)
-- **Date & Time Scheduling**: Interactive calendar and time slot selection
-- **Customer Information**: Auto-populate from profile or custom entry
-- **Payment Method Selection**: Cash, Pay-at-service, Online (future)
-- **Special Requests**: Custom notes and requirements for service providers
-
-#### ✅ **Booking Management Workflow**
-- **Multi-vendor Support**: Separate bookings for different service providers
-- **Booking Status Tracking**: Complete lifecycle management
-  - Pending → Confirmed → In-Progress → Completed
-  - Rescheduled, Cancelled, No-show, Refunded support
-- **Status History**: Complete timeline tracking with timestamps and notes
-- **Conflict Prevention**: Intelligent scheduling to avoid double bookings
-- **Real-time Updates**: Instant status changes and notifications
-
-#### ✅ **Customer Booking Experience**
-- **Booking History Page**: Professional interface with filtering and sorting
-- **Booking Details Modal**: Comprehensive booking information display
-  - Service details and provider information
-  - Scheduled date, time, and location
-  - Customer information and service address
-  - Payment method and status
-  - Complete booking timeline
-- **Booking Actions**:
-  - View detailed booking information
-  - Cancel bookings (for pending/confirmed status)
-  - Reschedule appointments with new date/time
-  - Track booking status in real-time
-
-#### ✅ **Vendor Booking Dashboard**
-- **Booking Statistics Dashboard**: 
-  - Total bookings, Pending, Confirmed, In-Progress, Completed counts
-  - Today's bookings and upcoming appointments
-  - Total revenue from completed bookings
-  - Visual statistics cards with color coding
-- **Booking Management Interface**:
-  - List all bookings with customer information
-  - Filter by status, date, and other criteria
-  - Sort by date, customer name, or booking status
-- **Booking Status Management**:
-  - One-click status progression workflow
-  - Add notes when updating booking status
-  - Real-time status updates with history tracking
-- **Customer Information Access**:
-  - Complete customer contact details
-  - Service address for home appointments
-  - Special requests and instructions
-  - Booking timeline and communication history
-
-#### ✅ **Booking API Endpoints**
-- **Customer Endpoints**:
-  - `POST /api/bookings` - Create new booking with validation
-  - `GET /api/bookings` - Get customer bookings (with pagination, filtering, sorting)
-  - `GET /api/bookings/:id` - Get single booking details
-  - `PUT /api/bookings/:id/cancel` - Cancel booking with reason
-  - `PUT /api/bookings/:id/reschedule` - Reschedule booking with new date/time
-- **Vendor Endpoints**:
-  - `GET /api/bookings/vendor` - Get vendor bookings (with pagination, filtering)
-  - `GET /api/bookings/vendor/stats` - Get booking statistics and analytics
-  - `PUT /api/bookings/:id/status` - Update booking status (vendor only)
-- **Security**: Role-based access control for all booking endpoints
-
-#### ✅ **Booking System Features**
-- **Role-based UI**: Different interfaces for customers vs service providers
-- **Real-time Updates**: Status changes reflect immediately across the system
-- **Service Integration**: Seamless integration with service listings
-- **Error Handling**: Comprehensive error management and user feedback
-- **Responsive Design**: Mobile-friendly booking interfaces
-- **Professional UI**: Clean, intuitive interfaces with proper loading states
-- **Validation**: Comprehensive form validation and data integrity
-- **Conflict Resolution**: Intelligent scheduling to prevent booking conflicts
-
-#### ✅ **Booking Testing Suite**
-- **Comprehensive Test Coverage**: 100% success rate for all booking scenarios
-- **Main Test Suite**: 12 comprehensive tests covering full booking lifecycle
-- **Scenario Testing**: Home service, vendor location, and online booking scenarios
-- **Frontend Integration**: Complete frontend-backend communication testing
-- **Error Handling**: Validation and edge case testing
-- **Performance Testing**: Load testing for booking creation and management
-
-### 📊 **DASHBOARD SYSTEMS**
-
-#### ✅ **Customer Dashboard**
-- **Personal Statistics**:
-  - Total orders placed ⭐ **LIVE DATA**
-  - Total bookings made ⭐ **LIVE DATA**
-  - Total amount spent ⭐ **LIVE DATA**
-  - Total booking expenses ⭐ **LIVE DATA**
-- **Quick Navigation**:
-  - Browse Products shortcut
-  - Find Services shortcut
-  - My Orders access ⭐ **FUNCTIONAL**
-  - My Bookings access ⭐ **FUNCTIONAL**
-- **Recent Activity Section**: Order and booking history display ⭐ **UPDATED**
-- **Personalized Greeting**: Welcome message with user name
-- **Action Cards**: Quick access to main features including booking management ⭐ **ENHANCED**
-
-#### ✅ **Vendor Dashboard**
-- **Business Statistics**:
-  - Total products listed
-  - Total services offered
-  - Total orders received ⭐ **LIVE DATA**
-  - Total bookings received ⭐ **LIVE DATA**
-  - Total booking revenue ⭐ **LIVE DATA**
-- **Quick Actions Panel**:
-  - Add Product button
-  - Add Service button
-  - View Orders button ⭐ **FUNCTIONAL**
-  - View Bookings button ⭐ **FUNCTIONAL**
-- **Recent Listings Management**:
-  - Last 5 products/services display
-  - Quick edit/delete actions
-  - Status indicators (Active/Inactive)
-  - Direct links to edit forms
-- **Business Overview**: Performance metrics and insights including booking analytics ⭐ **ENHANCED**
-
-### 🎨 **USER INTERFACE & EXPERIENCE**
-
-#### ✅ **Responsive Design**
-- **Mobile-First Approach**: Optimized for mobile devices
-- **Tablet Compatibility**: Perfect tablet viewing experience
-- **Desktop Optimization**: Full desktop feature utilization
-- **Cross-browser Compatibility**: Works on all modern browsers
-
-#### ✅ **Navigation System**
-- **Dynamic Navbar**: Changes based on authentication status
-- **Role-based Menu Items**: Different options for customers vs vendors
-- **User Profile Dropdown**: Quick access to profile and logout
-- **Breadcrumb Navigation**: Clear page hierarchy
-- **Footer Links**: Additional navigation and information
-
-#### ✅ **Visual Design**
-- **Modern Color Scheme**: Professional blue and green palette
-- **Consistent Typography**: Inter font family throughout
-- **Loading States**: Smooth loading animations ⭐ **ENHANCED**
-- **Error Handling**: User-friendly error messages ⭐ **IMPROVED**
-- **Success Feedback**: Confirmation messages for actions ⭐ **ENHANCED**
-- **Icon Integration**: Heroicons for consistent iconography
-- **Status Badges**: Color-coded status indicators ⭐ **NEW**
-- **Modal Dialogs**: Professional modal interfaces ⭐ **NEW**
-
-#### ✅ **Interactive Elements**
-- **Hover Effects**: Smooth transitions on interactive elements
-- **Button States**: Clear active, hover, and disabled states
-- **Form Validation**: Real-time validation feedback ⭐ **ENHANCED**
-- **Modal Support**: Fully functional popup dialogs ⭐ **IMPLEMENTED**
-- **Dropdown Menus**: Functional dropdown components
-- **Status Updates**: Interactive status progression ⭐ **NEW**
-- **Filter Controls**: Advanced filtering interfaces ⭐ **NEW**
-
-### 🔧 **BACKEND API ARCHITECTURE**
-
-#### ✅ **RESTful API Design**
-- **Authentication Endpoints**:
-  - `POST /api/auth/register` - User registration
-  - `POST /api/auth/login` - User login
-  - `GET /api/auth/profile` - Get user profile
-  - `PUT /api/auth/profile` - Update user profile
-  - `PUT /api/auth/change-password` - Change password
-
-- **Product Endpoints**:
-  - `GET /api/products` - Browse products (with filters)
-  - `GET /api/products/:id` - Get single product
-  - `POST /api/products` - Create product (vendor only)
-  - `PUT /api/products/:id` - Update product (vendor only)
-  - `DELETE /api/products/:id` - Delete product (vendor only)
-  - `GET /api/products/vendor/my-products` - Get vendor's products
-
-- **Service Endpoints**:
-  - `GET /api/services` - Browse services (with filters)
-  - `GET /api/services/:id` - Get single service
-  - `POST /api/services` - Create service (vendor only)
-  - `PUT /api/services/:id` - Update service (vendor only)
-  - `DELETE /api/services/:id` - Delete service (vendor only)
-  - `GET /api/services/vendor/my-services` - Get vendor's services
-
-- **Order Endpoints** ⭐ **NEW - COMPLETE API**:
-  - `POST /api/orders` - Create new order (customer only)
-  - `GET /api/orders` - Get customer orders (with pagination, filtering, sorting)
-  - `GET /api/orders/vendor` - Get vendor orders (vendor only)
-  - `GET /api/orders/:id` - Get single order details
-  - `PUT /api/orders/:id/status` - Update order status (vendor only)
-  - `PUT /api/orders/:id/cancel` - Cancel order (customer/vendor)
-
-#### ✅ **Security Implementation**
-- **JWT Authentication**: Secure token-based authentication
-- **Password Hashing**: bcryptjs for secure password storage
-- **Input Validation**: express-validator for all inputs ⭐ **ENHANCED**
-- **Role-based Authorization**: Middleware for role checking ⭐ **ENHANCED**
-- **CORS Configuration**: Proper cross-origin resource sharing
-- **Error Handling**: Comprehensive error management ⭐ **IMPROVED**
-- **Access Control**: Order-specific access validation ⭐ **NEW**
-
-#### ✅ **Database Design**
-- **User Model**: Complete user information with roles
-- **VendorProfile Model**: Business-specific information
-- **Product Model**: Comprehensive product data structure
-- **Service Model**: Flexible service information
-- **Order Model**: Complete order lifecycle management ⭐ **NEW**
-  - Order identification and numbering
-  - Customer and vendor relationships
-  - Order items with pricing and quantities
-  - Delivery information and addresses
-  - Status tracking with history
-  - Payment method and status
-  - Timestamps and notes
-- **Address Schema**: Embedded address structure
-- **Indexing**: Optimized database queries ⭐ **ENHANCED**
-
-### � **FRONTEND ARCHITECTURE**
-
-#### ✅ **React.js Implementation**
-- **Functional Components**: Modern React with hooks
-- **Context API**: Global state management for authentication and cart ⭐ **ENHANCED**
-- **React Router**: Client-side routing with protected routes
-- **Custom Hooks**: Reusable logic for API calls
-- **Error Boundaries**: Graceful error handling
-
-#### ✅ **State Management**
-- **Authentication Context**: Global user state
-- **Cart Context**: Global shopping cart state ⭐ **NEW**
-- **Local State**: Component-specific state management
-- **Form State**: Controlled form inputs ⭐ **ENHANCED**
-- **Loading States**: UI feedback during API calls ⭐ **IMPROVED**
-- **Error States**: User-friendly error displays ⭐ **ENHANCED**
-
-#### ✅ **Component Architecture**
-- **Reusable Components**: Navbar, Footer, ProtectedRoute
-- **Page Components**: Home, Products, Services, Dashboard, Profile, Orders ⭐ **ENHANCED**
-- **Layout Components**: Consistent page layouts
-- **Form Components**: Reusable form elements ⭐ **ENHANCED**
-- **Card Components**: Product and service cards
-- **Modal Components**: Order details and management modals ⭐ **NEW**
-- **Status Components**: Order status badges and timelines ⭐ **NEW**
-
-### 🧪 **TESTING & QUALITY ASSURANCE**
-
-#### ✅ **API Testing**
-- **Health Check Tests**: Server connectivity verification
-- **Authentication Tests**: Registration and login testing
-- **Product API Tests**: CRUD operation testing
-- **Service API Tests**: Complete service endpoint testing
-- **Order API Tests**: Complete order management testing ⭐ **NEW**
-  - Order creation with multi-vendor support
-  - Order retrieval (customer and vendor views)
-  - Order status updates
-  - Order cancellation with stock restoration
-  - Stock management integration
-- **Error Handling Tests**: Invalid input testing ⭐ **ENHANCED**
-
-#### ✅ **Code Quality**
-- **ESLint Configuration**: Code quality enforcement
-- **Consistent Formatting**: Prettier integration
-- **Error Handling**: Comprehensive error management ⭐ **ENHANCED**
-- **Input Validation**: Both frontend and backend validation ⭐ **ENHANCED**
-- **Security Best Practices**: Secure coding standards ⭐ **IMPROVED**
+**Stack**: MongoDB · Express.js · React.js · Node.js · Tailwind CSS · JWT Auth · Leaflet Maps
 
 ---
 
-## 🎯 **CURRENT CAPABILITIES - WHAT USERS CAN DO RIGHT NOW**
+## Running the Project
 
-### 👤 **As a Customer:**
-1. **Account Management**
-   - Register with complete profile information
-   - Login and maintain session
-   - View and edit profile information
-   - Manage address details
+```bash
+# Terminal 1 — Backend (port 5000)
+cd backend
+node server.js
 
-2. **Product Discovery**
-   - Browse all available products
-   - Search products by name/description
-   - Filter by category and price range
-   - Sort by various criteria
-   - View detailed product information
-   - See vendor information
+# Terminal 2 — Frontend (port 3000)
+cd frontend
+npm start
 
-3. **Service Discovery**
-   - Browse all available services
-   - Search services by title/description
-   - Filter by service category and pricing
-   - View service details and provider info
-   - See pricing models and duration
+# MongoDB must be running locally on port 27017
+```
 
-4. **Shopping & Orders** ⭐ **NEW - COMPLETE FUNCTIONALITY**
-   - **Add products to shopping cart**
-   - **Manage cart quantities and items**
-   - **Complete checkout process with delivery options**
-   - **Choose payment methods (Cash on Delivery, Pay at Shop)**
-   - **Enter delivery addresses for home delivery**
-   - **Place orders with automatic stock validation**
-   - **View complete order history with filtering and sorting**
-   - **Track order status in real-time**
-   - **View detailed order information in modal dialogs**
-   - **Cancel orders (for pending/confirmed status)**
-   - **See order timeline with status history**
-
-5. **Dashboard Experience**
-   - View personalized dashboard with live order statistics ⭐ **ENHANCED**
-   - Access quick navigation to products/services
-   - Monitor account statistics including total spent ⭐ **LIVE DATA**
-   - Quick access to profile and order management ⭐ **ENHANCED**
-
-### 🏪 **As a Vendor:**
-1. **Business Account Management**
-   - Register with business information
-   - Manage business profile
-   - Update business details and description
-   - View business statistics with live order data ⭐ **ENHANCED**
-
-2. **Product Management**
-   - Create new products with full details
-   - Upload product information and pricing
-   - Manage inventory and stock levels ⭐ **INTEGRATED WITH ORDERS**
-   - Edit existing products
-   - Activate/deactivate products
-   - View all personal products
-
-3. **Service Management**
-   - Create service offerings
-   - Set flexible pricing models
-   - Define service duration and details
-   - Manage service categories
-   - Edit and update services
-   - Control service availability
-
-4. **Order Management** ⭐ **NEW - COMPLETE VENDOR DASHBOARD**
-   - **View comprehensive order statistics dashboard**
-   - **Monitor orders by status (Pending, Confirmed, Preparing, etc.)**
-   - **Manage incoming orders with professional interface**
-   - **Update order status with one-click progression**
-   - **Add notes when updating order status**
-   - **View complete customer information and contact details**
-   - **Access delivery addresses and special instructions**
-   - **Track order timeline and history**
-   - **Filter and sort orders by various criteria**
-   - **Professional order management modal with all details**
-
-5. **Business Dashboard**
-   - View comprehensive business metrics with live order data ⭐ **ENHANCED**
-   - Quick access to product/service creation
-   - Manage recent listings
-   - Monitor business performance including order statistics ⭐ **NEW**
-   - Direct access to order management dashboard ⭐ **NEW**
-
-### 🌐 **As a Visitor (Non-authenticated):**
-1. **Browse Products**: View all products without restrictions
-2. **Browse Services**: Explore all service offerings
-3. **Search & Filter**: Use all search and filtering capabilities
-4. **View Details**: See product and service information
-5. **Registration**: Create customer or vendor accounts
+**Admin credentials**
+- Email: `admin@locallink.com`
+- Password: `Admin@1234`
 
 ---
 
-## 🚀 **DEPLOYMENT STATUS**
+## Architecture
 
-### ✅ **Local Development Environment - LIVE & ACTIVE**
-- **Backend Server**: ✅ Running on http://localhost:5000
-- **Frontend Application**: ✅ Running on http://localhost:3000
-- **Database**: ✅ MongoDB local instance connected (locallink database)
-- **API Health**: ✅ All endpoints responding correctly (30+ endpoints) ⭐ **EXPANDED**
-- **CORS**: ✅ Configured for local development
-- **Hot Reload**: ✅ Both servers with live reload enabled
+```
+backend/
+  config/         # MongoDB connection
+  controllers/    # Route handlers (auth, product, service, order, booking, admin)
+  middleware/     # JWT auth, role authorization, optional auth
+  models/         # Mongoose schemas
+  routes/         # Express routers
+  scripts/        # Utility scripts (createAdmin, createIndexes, testGeo)
+  utils/          # Input validation rules
 
-### 🔧 **Development Server Status**
-- **Backend Process**: Active (npm start in backend/)
-- **Frontend Process**: Active (npm start in frontend/)
-- **Database Connection**: Stable MongoDB connection
-- **API Testing**: ✅ All test scripts passing including order system ⭐ **ENHANCED**
-- **Build Status**: ✅ Frontend compiled successfully
-- **Error Monitoring**: ✅ Real-time error logging active
-
-### ✅ **Version Control & Dependencies**
-- **Git Repository**: ✅ 45+ professional commits completed ⭐ **UPDATED**
-- **Package Management**: ✅ Both package-lock.json files committed
-- **Dependency Security**: ✅ All dependencies locked to specific versions
-- **Code History**: ✅ Complete development timeline documented
-- **Branch Status**: ✅ Clean working tree with order management feature ⭐ **UPDATED**
-
-### ✅ **Production Readiness**
-- **Environment Variables**: ✅ Properly configured (.env files)
-- **Security Implementation**: ✅ JWT secrets and password hashing
-- **Error Handling**: ✅ Comprehensive error management ⭐ **ENHANCED**
-- **Input Validation**: ✅ Server-side and client-side validation ⭐ **ENHANCED**
-- **Logging System**: ✅ Server logging implemented
-- **Build Process**: ✅ Production build ready
-- **Database Schema**: ✅ Optimized with proper indexing ⭐ **ENHANCED**
-- **API Documentation**: ✅ Available through test scripts ⭐ **EXPANDED**
-
-### 🌐 **Accessibility & Testing**
-- **Local Access**: http://localhost:3000 (Frontend) | http://localhost:5000 (Backend)
-- **API Endpoints**: 30+ RESTful endpoints fully functional ⭐ **EXPANDED**
-- **Authentication**: ✅ JWT-based auth system working
-- **Role-based Access**: ✅ Customer/Vendor permissions active ⭐ **ENHANCED**
-- **Responsive Design**: ✅ Mobile, tablet, desktop optimized
-- **Cross-browser**: ✅ Compatible with modern browsers
-
-### 📊 **Performance Metrics**
-- **Backend Response Time**: < 200ms for most endpoints
-- **Frontend Load Time**: < 3 seconds initial load
-- **Database Queries**: Optimized with proper indexing ⭐ **ENHANCED**
-- **Bundle Size**: Optimized React build
-- **Memory Usage**: Efficient resource utilization
-- **API Throughput**: Handles concurrent requests ⭐ **TESTED**
-
-### 🔒 **Security Status**
-- **Authentication**: ✅ JWT tokens with expiration
-- **Password Security**: ✅ bcryptjs hashing (salt rounds: 12)
-- **Input Sanitization**: ✅ express-validator on all inputs ⭐ **ENHANCED**
-- **CORS Policy**: ✅ Configured for development/production
-- **SQL Injection**: ✅ Protected via Mongoose ODM
-- **XSS Protection**: ✅ React built-in protection + validation
-- **Order Security**: ✅ Role-based order access control ⭐ **NEW**
-
-### 📱 **Feature Deployment Status**
-- **User Registration**: ✅ Live and functional
-- **User Authentication**: ✅ Login/logout working
-- **Product Browsing**: ✅ Search, filter, pagination active
-- **Service Discovery**: ✅ Category filtering operational
-- **Vendor Dashboard**: ✅ Business management tools ready ⭐ **ENHANCED**
-- **Customer Dashboard**: ✅ User interface fully functional ⭐ **ENHANCED**
-- **Profile Management**: ✅ Edit profile capabilities active
-- **Responsive UI**: ✅ Mobile-friendly interface deployed
-- **Shopping Cart**: ✅ Complete cart functionality deployed ⭐ **NEW**
-- **Order Management**: ✅ Full order lifecycle management ⭐ **NEW**
-- **Checkout Process**: ✅ Professional checkout interface ⭐ **NEW**
-- **Order Tracking**: ✅ Real-time status tracking ⭐ **NEW**
-- **Vendor Order Dashboard**: ✅ Complete order management for vendors ⭐ **NEW**
-- **Booking Management**: ✅ Complete service booking system ⭐ **NEW**
-- **Booking Dashboard**: ✅ Professional booking management interface ⭐ **NEW**
-- **Service Scheduling**: ✅ Date/time booking with conflict prevention ⭐ **NEW**
-
-### 🎯 **Demo Readiness**
-- **Academic Presentation**: ✅ Ready for evaluation ⭐ **ENHANCED**
-- **Feature Demonstration**: ✅ All core features operational ⭐ **EXPANDED**
-- **User Journey Testing**: ✅ Complete workflows functional ⭐ **ENHANCED**
-- **Error Handling**: ✅ Graceful error management
-- **Loading States**: ✅ User feedback during operations
-- **Data Persistence**: ✅ MongoDB data storage working
-- **Order Flow Demo**: ✅ Complete order lifecycle demonstration ⭐ **NEW**
-- **Booking Flow Demo**: ✅ Complete booking lifecycle demonstration ⭐ **NEW**
-- **Multi-role Demo**: ✅ Customer and vendor perspectives ⭐ **NEW**
-
-### 🚀 **Next Deployment Phase Ready**
-- **Foundation**: ✅ Solid MVP base established ⭐ **STRENGTHENED**
-- **Scalability**: ✅ Architecture ready for expansion
-- **Code Quality**: ✅ Clean, maintainable codebase ⭐ **IMPROVED**
-- **Documentation**: ✅ Comprehensive feature documentation ⭐ **UPDATED**
-- **Version Control**: ✅ Professional git workflow
-- **Team Ready**: ✅ Ready for collaborative development
+frontend/
+  src/
+    components/   # Navbar, Footer, Cart, LocationPicker, ServiceBookingModal, NotificationBell
+    context/      # AuthContext, CartContext, LocationContext, NotificationContext
+    pages/        # All page components
+    pages/admin/  # Admin-only pages
+    services/     # Axios API instance + authService
+```
 
 ---
 
-## 📈 **TECHNICAL ACHIEVEMENTS**
+## Database Models
 
-### 🏗️ **Architecture Excellence**
-- **MVC Pattern**: Clean separation of concerns
-- **RESTful Design**: Industry-standard API design ⭐ **EXPANDED**
-- **Component-based UI**: Reusable React components ⭐ **ENHANCED**
-- **Responsive Design**: Mobile-first approach
-- **Scalable Structure**: Easy to extend and maintain ⭐ **PROVEN**
-- **Multi-vendor Architecture**: Supports multiple vendors per order ⭐ **NEW**
-- **State Management**: Professional state management with Context API ⭐ **ENHANCED**
-
-### 🔒 **Security Implementation**
-- **Authentication**: JWT-based secure authentication
-- **Authorization**: Role-based access control ⭐ **ENHANCED**
-- **Input Validation**: Comprehensive validation on both ends ⭐ **ENHANCED**
-- **Password Security**: Hashed password storage
-- **CORS Security**: Proper cross-origin configuration
-- **Order Security**: Secure order access and management ⭐ **NEW**
-- **Data Protection**: Secure handling of sensitive order information ⭐ **NEW**
-
-### 📊 **Performance Optimization**
-- **Pagination**: Efficient data loading ⭐ **ENHANCED**
-- **Lazy Loading**: Optimized resource loading
-- **Caching**: Browser caching strategies
-- **Minification**: Optimized production builds
-- **Database Indexing**: Optimized query performance ⭐ **ENHANCED**
-- **Real-time Updates**: Efficient status tracking ⭐ **NEW**
-- **Stock Management**: Optimized inventory operations ⭐ **NEW**
-
-### 🛒 **E-commerce Features** ⭐ **NEW CATEGORY**
-- **Shopping Cart**: Complete cart management system
-- **Checkout Process**: Professional checkout workflow
-- **Order Processing**: Multi-vendor order handling
-- **Payment Integration**: Multiple payment method support
-- **Inventory Management**: Real-time stock tracking
-- **Order Tracking**: Complete order lifecycle management
-- **Status Management**: Professional order status system
-- **Customer Service**: Order history and management tools
+| Model | Key Fields |
+|-------|-----------|
+| User | name, email, password (hashed), phone, role (customer/vendor/admin), address, isActive |
+| VendorProfile | user (ref), businessName, businessType (shop/service), category, description, location (GeoJSON Point), isVerified, verificationStatus |
+| Product | name, description, vendor (ref VendorProfile), category, price, stock, unit, images, isAvailable, status (active/inactive/pending-approval/rejected) |
+| Service | title, description, provider (ref VendorProfile), category, pricingType, basePrice, priceUnit, duration, images, isAvailable, status |
+| Order | orderNumber, customer (ref User), vendor (ref VendorProfile), items[], deliveryType, deliveryAddress, paymentMethod, status, statusHistory[], totalAmount |
+| Booking | customer (ref User), provider (ref VendorProfile), service (ref Service), scheduledDate, scheduledTime, serviceLocation, status, statusHistory[] |
+| Notification | recipient (ref User), type, title, message, isRead |
 
 ---
 
-## 🎓 **ACADEMIC & PROFESSIONAL VALUE**
+## What Is Fully Working
 
-### 📚 **Learning Outcomes Demonstrated**
-- **Full-Stack Development**: Complete MERN stack implementation ⭐ **ENHANCED**
-- **Database Design**: Normalized schema with relationships ⭐ **EXPANDED**
-- **API Development**: RESTful service architecture ⭐ **COMPREHENSIVE**
-- **Frontend Development**: Modern React.js practices ⭐ **ADVANCED**
-- **Authentication**: Secure user management
-- **UI/UX Design**: Professional user interface design ⭐ **ENHANCED**
-- **E-commerce Development**: Complete order management system ⭐ **NEW**
-- **State Management**: Advanced React state management ⭐ **NEW**
-- **Business Logic**: Complex multi-vendor business rules ⭐ **NEW**
+### Authentication
+- JWT-based login and registration for customer and vendor roles
+- Password hashing with bcryptjs
+- Protected routes on frontend (ProtectedRoute, AdminRoute components)
+- Optional auth middleware for public endpoints that also serve logged-in users
+- `GET /api/auth/profile` — returns user + vendorProfile
+- `PUT /api/auth/profile` — update user info
+- `PUT /api/auth/change-password`
+- `PUT /api/auth/vendor/location` — update vendor GPS location (lat/lng/address)
 
-### 💼 **Industry Standards**
-- **Code Quality**: Clean, maintainable, and documented code ⭐ **ENHANCED**
-- **Version Control**: Git-based development workflow
-- **Testing**: Comprehensive API testing ⭐ **EXPANDED**
-- **Documentation**: Detailed project documentation ⭐ **COMPREHENSIVE**
-- **Deployment**: Production-ready configuration
-- **Security**: Industry-standard security practices ⭐ **ENHANCED**
-- **Performance**: Optimized application performance ⭐ **IMPROVED**
+### Vendor Registration & Profile
+- Vendors register with business name, type (shop/service), and category
+- Location picker (Leaflet map) available during registration and in profile page
+- Location uses GPS detection, address search (Nominatim), or manual map click
+- Vendor profile shows existing location on load; can update anytime from Profile page
+- Profile page has a working "Edit Profile" form for personal info
+
+### Admin System
+- Admin account created via `node scripts/createAdmin.js`
+- Admin dashboard at `/admin` with stats (users, vendors, products, services, orders, bookings)
+- Vendor verification: admin can approve or reject vendor accounts
+- Product approval: admin can approve or reject products (sets status active/rejected)
+- Service approval: admin can approve or reject services
+- Notifications sent to vendor on approval/rejection
+- Admin routes protected by `AdminRoute` component on frontend
+
+### Product System
+- Vendors create products (saved as `pending-approval`, must be approved by admin to go public)
+- Public product listing filters by `status: active` and `isAvailable: true`
+- Location-based filtering: if customer has location enabled, products are filtered by vendors within radius using `$nearSphere` geo query
+- The `2dsphere` index on `VendorProfile.location` is required and must be created via `node scripts/createIndexes.js` if the collection pre-existed
+- Search by name/description/tags, filter by category, price range, sort options, pagination
+- Vendors see their own products (all statuses) at `/products/vendor/my-products`
+- Soft delete (sets status to inactive)
+- Pre-save hook: automatically sets `isAvailable = false` when stock reaches 0
+
+### Service System
+- Same approval workflow as products (pending-approval → admin approves → active)
+- Service field is `provider` (not `vendor`) — this is intentional and consistent throughout
+- Location-based filtering same as products
+- Flexible pricing: fixed, hourly, per-visit, negotiable
+- Duration tracking in minutes
+
+### Order System
+- Customers add products to cart (CartContext, persisted in localStorage)
+- Checkout supports home delivery (with address) or self-pickup
+- Payment methods: Cash on Delivery, Pay at Shop
+- Multi-vendor: one checkout creates separate orders per vendor automatically
+- Stock validated and decremented on order creation; restored on cancellation
+- Order status flow: pending → confirmed → preparing → ready → out-for-delivery → delivered
+- Vendors update order status with optional notes
+- Customers can cancel pending/confirmed orders
+- Full status history timeline stored per order
+
+### Booking System
+- Customers book services via ServiceBookingModal
+- Service location options: home service, vendor location, online
+- Date/time scheduling
+- Booking status flow: pending → confirmed → in-progress → completed
+- Vendors manage bookings from `/bookings` (vendor view)
+- Customers view/cancel/reschedule from `/bookings` (customer view)
+- Vendor booking stats endpoint: `GET /api/bookings/vendor/stats`
+
+### Notifications
+- NotificationBell component in navbar
+- Notifications created on: vendor approval/rejection, product approval/rejection, service approval/rejection
+- NotificationContext manages unread count and polling
+
+### Location System
+- LocationContext stores user's lat/lng/radius in localStorage
+- LocationBar and LocationPicker components for customer location setting
+- When location is enabled, product/service API calls include lat/lng/radius params
+- If geo query returns 0 vendors, API returns empty results with a message (not a silent failure)
+- Dashboard shows a warning banner for vendors who haven't set their location
+
+### Dashboard
+- Vendor dashboard: live stats (products, services, orders, bookings), recent listings, quick actions
+- Vendor dashboard shows a location-missing warning banner with link to profile if location is `[0,0]`
+- Customer dashboard: live stats (orders, bookings, total spent), quick navigation
+- Admin redirected to `/admin` automatically
 
 ---
 
-## 🎯 **DEMONSTRATION SCENARIOS**
+## Known Issues / Limitations
 
-### 🎬 **Demo Script 1: Customer Journey** ⭐ **ENHANCED**
-1. Visit homepage → Register as customer → Browse products/services → Add to cart/book service → Complete checkout/booking → View order/booking history → Track status
+### No Real Payment Integration
+- Only Cash on Delivery and Pay at Shop are supported
+- No Razorpay, Stripe, or UPI integration
 
-### 🎬 **Demo Script 2: Vendor Journey** ⭐ **ENHANCED**
-1. Register as vendor → Access vendor dashboard → Create products/services → Receive orders/bookings → Manage status → Update progress
+### No Image Upload
+- Product and service images are stored as URLs (strings), not actual file uploads
+- No S3, Cloudinary, or local multer upload implemented
+- Vendors must paste image URLs manually
 
-### 🎬 **Demo Script 3: Complete Order & Booking Flow** ⭐ **NEW**
-1. Customer places order/booking → Vendor receives notification → Status updates → Completion → Stock/schedule management demonstration
+### Profile Page — Vendor Business Info Not Editable
+- The Business Information section in Profile shows vendor data as read-only
+- There is no form to update businessName, businessType, category, or description after registration
 
-### 🎬 **Demo Script 4: Technical Showcase** ⭐ **ENHANCED**
-1. API testing → Database operations → Authentication flow → Role-based access → Responsive design → Order & booking management systems
+### Password Change — UI Only
+- The "Change Password" button in Profile exists but has no form implemented
+- The backend endpoint `PUT /api/auth/change-password` works correctly
 
-### 🎬 **Demo Script 5: Multi-vendor Scenario** ⭐ **NEW**
-1. Customer orders from multiple vendors → Separate order creation → Individual vendor management → Parallel processing
+### No Email Verification
+- Users are marked `isVerified: false` by default but no email is sent
+- No OTP or email confirmation flow exists
 
-### 🎬 **Demo Script 6: Service Booking Showcase** ⭐ **NEW**
-1. Service discovery → Booking creation → Schedule management → Status tracking → Vendor booking dashboard → Customer booking history
+### No Real-time Updates
+- No WebSocket or Socket.io — order/booking status changes require page refresh to reflect
+- Notifications use polling (if implemented) not push
+
+### Location Edge Cases
+- If a vendor sets location to `[0,0]` (default), they won't appear in any location-based search
+- The `createIndexes.js` script must be run manually on fresh MongoDB instances to create the `2dsphere` index — without it, all geo queries fail with an error
+
+### Admin Panel Gaps
+- No order management in admin panel (can't view/manage all orders)
+- No booking management in admin panel
+- No user deactivation UI (model supports `isActive` but no admin action)
+- No bulk approve/reject for products or services
+
+### Duplicate Schema Index Warning
+- Console shows `[MONGOOSE] Warning: Duplicate schema index on {"user":1}` for VendorProfile
+- Caused by both `unique: true` on the field and `vendorProfileSchema.index({ user: 1 })` — harmless but noisy
 
 ---
 
-**Status**: ✅ **PRODUCTION-READY MVP WITH COMPLETE ORDER & BOOKING MANAGEMENT**  
-**Deployment**: ✅ **LIVE & FULLY FUNCTIONAL**  
-**Demo Ready**: ✅ **COMPREHENSIVE DEMONSTRATION READY**  
-**Academic Presentation**: ✅ **READY FOR ADVANCED EVALUATION**  
-**E-commerce Ready**: ✅ **COMPLETE ORDER & BOOKING LIFECYCLE IMPLEMENTED** ⭐ **NEW**
+## What Needs To Be Done
+
+### High Priority
+1. **Image Upload** — Integrate Cloudinary or multer for actual file uploads instead of URL strings
+2. **Vendor Business Profile Edit** — Allow vendors to update businessName, category, description from Profile page
+3. **Password Change Form** — Wire up the existing backend endpoint to a frontend form
+4. **Real-time Notifications** — Replace polling with Socket.io for instant order/booking status updates
+
+### Medium Priority
+5. **Payment Gateway** — Integrate Razorpay or Stripe for online payments
+6. **Email Notifications** — Send emails on registration, order placement, status changes (Nodemailer + Gmail/SendGrid)
+7. **Admin Order/Booking Management** — Add order and booking views to admin panel
+8. **Reviews & Ratings** — Allow customers to rate products and services after completion
+9. **Search Improvements** — Add full-text search index on MongoDB for better product/service search
+
+### Low Priority / Future
+10. **Fix duplicate index warning** — Remove redundant `vendorProfileSchema.index({ user: 1 })` since `unique: true` already creates it
+11. **User deactivation** — Admin UI to activate/deactivate user accounts
+12. **Vendor analytics** — Revenue charts, order trends, popular products
+13. **Customer wishlist** — Save products/services for later
+14. **Promo codes / discounts** — Coupon system for orders
+15. **Production deployment** — Deploy to cloud (Railway/Render for backend, Vercel for frontend, MongoDB Atlas for DB)
+
+---
+
+## API Endpoints Reference
+
+### Auth — `/api/auth`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| POST | /register | Public | Register user (customer or vendor) |
+| POST | /login | Public | Login, returns JWT |
+| GET | /profile | Private | Get current user + vendorProfile |
+| PUT | /profile | Private | Update name, phone, address |
+| PUT | /change-password | Private | Change password |
+| PUT | /vendor/location | Vendor | Update business GPS location |
+
+### Products — `/api/products`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | / | Public | Browse active products (filters: search, category, price, lat/lng/radius, sort, page) |
+| GET | /:id | Public | Single product detail |
+| POST | / | Vendor (verified) | Create product (saved as pending-approval) |
+| PUT | /:id | Vendor | Update own product |
+| DELETE | /:id | Vendor | Soft delete own product |
+| GET | /vendor/my-products | Vendor | Own products (all statuses) |
+
+### Services — `/api/services`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | / | Public | Browse active services (same filters as products) |
+| GET | /:id | Public | Single service detail |
+| POST | / | Vendor (verified) | Create service (saved as pending-approval) |
+| PUT | /:id | Vendor | Update own service |
+| DELETE | /:id | Vendor | Soft delete own service |
+| GET | /vendor/my-services | Vendor | Own services (all statuses) |
+
+### Orders — `/api/orders`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| POST | / | Customer | Create order (multi-vendor, validates stock) |
+| GET | / | Customer | Own order history (filter by status, sort, paginate) |
+| GET | /vendor | Vendor | Incoming orders for vendor's products |
+| GET | /:id | Customer/Vendor | Single order detail |
+| PUT | /:id/status | Vendor | Update order status with optional note |
+| PUT | /:id/cancel | Customer/Vendor | Cancel order (restores stock) |
+
+### Bookings — `/api/bookings`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| POST | / | Customer | Create booking |
+| GET | / | Customer | Own bookings |
+| GET | /vendor | Vendor | Incoming bookings |
+| GET | /vendor/stats | Vendor | Booking statistics |
+| GET | /:id | Customer/Vendor | Single booking detail |
+| PUT | /:id/status | Vendor | Update booking status |
+| PUT | /:id/cancel | Customer | Cancel booking |
+| PUT | /:id/reschedule | Customer | Reschedule booking |
+
+### Admin — `/api/admin`
+| Method | Path | Access | Description |
+|--------|------|--------|-------------|
+| GET | /stats | Admin | Platform-wide statistics |
+| GET | /vendors | Admin | List vendors (filter by status) |
+| PUT | /vendors/:id/approve | Admin | Approve vendor |
+| PUT | /vendors/:id/reject | Admin | Reject vendor with reason |
+| GET | /products | Admin | List products (filter by status) |
+| PUT | /products/:id/approve | Admin | Approve product (sets active) |
+| PUT | /products/:id/reject | Admin | Reject product |
+| GET | /services | Admin | List services (filter by status) |
+| PUT | /services/:id/approve | Admin | Approve service |
+| PUT | /services/:id/reject | Admin | Reject service |
+| GET | /users | Admin | List all users |
+
+### Notifications — `/api/notifications`
+- `GET /` — Get user notifications
+- `PUT /:id/read` — Mark as read
+- `PUT /read-all` — Mark all as read
+
+---
+
+## Git Info
+- **Branch**: `feature/admin-system`
+- **Remote**: GitHub
+- All changes committed and pushed
