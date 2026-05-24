@@ -1,6 +1,7 @@
 # LocalLink 🛍️
 
 A full-stack hyperlocal marketplace where customers discover nearby shops and service providers, place orders, book services, and track everything in one place.
+It's exactly a combination of various products and services at one place bringing comfort and ease to the customer.
 
 ---
 
