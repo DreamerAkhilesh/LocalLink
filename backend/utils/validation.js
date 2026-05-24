@@ -116,8 +116,9 @@ const validateProduct = [
     .withMessage('Invalid unit'),
     
   body('images')
-    .isArray({ min: 1 })
-    .withMessage('At least one image is required')
+    .optional()
+    .isArray()
+    .withMessage('Images must be an array of URLs')
 ];
 
 /**
@@ -299,8 +300,8 @@ const validateProductUpdate = [
     
   body('images')
     .optional()
-    .isArray({ min: 1 })
-    .withMessage('At least one image is required')
+    .isArray()
+    .withMessage('Images must be an array of URLs')
 ];
 
 /**

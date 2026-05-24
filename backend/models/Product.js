@@ -79,10 +79,9 @@ const productSchema = new mongoose.Schema({
     min: [1, 'Minimum order quantity must be at least 1']
   },
   
-  // Product Images
+  // Product Images (optional — a placeholder is shown on the frontend when empty)
   images: [{
     type: String,
-    required: true
   }],
   
   // Availability
