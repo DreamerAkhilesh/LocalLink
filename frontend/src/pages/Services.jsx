@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
 import ServiceBookingModal from '../components/ServiceBookingModal';
+import NoImagePlaceholder from '../components/NoImagePlaceholder';
 
 /**
  * Services Page Component
@@ -19,11 +20,13 @@ const Services = () => {
   const [error, setError] = useState('');
   const [selectedService, setSelectedService] = useState(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [filters, setFilters] = useState({
-    search: '', category: '', minPrice: '', maxPrice: '',
-    sortBy: 'createdAt', sortOrder: 'desc'
-  });
+  const initialFilters = { search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' };
+  const [filters, setFilters] = useState(initialFilters);           // drives UI inputs
+  const [debouncedFilters, setDebouncedFilters] = useState(initialFilters); // drives API
+  const debounceRef = useRef(null);
   const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
+  const [locationMeta, setLocationMeta] = useState({ filtered: false, fallback: false, radiusKm: null });
+  const [useNearMe, setUseNearMe] = useState(true);
 
   const categories = [
     'plumbing','electrical','carpentry','painting','cleaning',
@@ -41,31 +44,35 @@ const Services = () => {
       let response;
       if (isVendor) {
         const params = new URLSearchParams({ page: page.toString(), limit: '12' });
-        if (filters.search) params.set('search', filters.search);
-        if (filters.category) params.set('category', filters.category);
+        if (debouncedFilters.search) params.set('search', debouncedFilters.search);
+        if (debouncedFilters.category) params.set('category', debouncedFilters.category);
         response = await api.get(`/services/vendor/my-services?${params}`);
       } else {
         const params = new URLSearchParams({ page: page.toString(), limit: '12' });
-        if (filters.search) params.set('search', filters.search);
-        if (filters.category) params.set('category', filters.category);
-        if (filters.minPrice) params.set('minPrice', filters.minPrice);
-        if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
-        if (filters.sortBy) params.set('sortBy', filters.sortBy);
-        if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
-        // Append location params for radius filtering
-        const locParams = getLocationParams();
-        if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        if (debouncedFilters.search) params.set('search', debouncedFilters.search);
+        if (debouncedFilters.category) params.set('category', debouncedFilters.category);
+        if (debouncedFilters.minPrice) params.set('minPrice', debouncedFilters.minPrice);
+        if (debouncedFilters.maxPrice) params.set('maxPrice', debouncedFilters.maxPrice);
+        if (debouncedFilters.sortBy) params.set('sortBy', debouncedFilters.sortBy);
+        if (debouncedFilters.sortOrder) params.set('sortOrder', debouncedFilters.sortOrder);
+        // Only attach location params when "Near me" is active
+        if (useNearMe) {
+          const locParams = getLocationParams();
+          if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        }
         response = await api.get(`/services?${params}`);
       }
-      setServices(response.data.data.services);
-      setPagination(response.data.data.pagination);
+      const d = response.data.data;
+      setServices(d.services);
+      setPagination(d.pagination);
+      setLocationMeta({ filtered: !!d.locationFiltered, fallback: !!d.locationFallback, radiusKm: d.radiusKm });
       setError('');
     } catch (err) {
-      setError('Failed to fetch services');
+      setError('Failed to load services. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [filters, isVendor, getLocationParams]);
+  }, [debouncedFilters, isVendor, getLocationParams, useNearMe]);
 
   useEffect(() => { fetchServices(); }, [fetchServices]);
 
@@ -79,10 +86,30 @@ const Services = () => {
     }
   };
 
-  const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
-  const handleFilterChangeBatch = (updates) => setFilters(prev => ({ ...prev, ...updates }));
+  // Text inputs (search, price): debounce 600ms so the API isn't hit on every keystroke.
+  // Dropdowns (category, sort): apply immediately.
+  const TEXT_KEYS = ['search', 'minPrice', 'maxPrice'];
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    if (TEXT_KEYS.includes(key)) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setDebouncedFilters(prev => ({ ...prev, [key]: value }));
+      }, 600);
+    } else {
+      setDebouncedFilters(prev => ({ ...prev, [key]: value }));
+    }
+  };
+  const handleFilterChangeBatch = (updates) => {
+    setFilters(prev => ({ ...prev, ...updates }));
+    setDebouncedFilters(prev => ({ ...prev, ...updates })); // sort is always immediate
+  };
   const handleSearch = (e) => { e.preventDefault(); };
-  const clearFilters = () => setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' });
+  const clearFilters = () => {
+    clearTimeout(debounceRef.current);
+    setFilters(initialFilters);
+    setDebouncedFilters(initialFilters);
+  };
 
   const handleBookService = (service) => {
     if (user?.role !== 'customer') {
@@ -132,25 +159,87 @@ const Services = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {isVendor ? 'My Services' : 'Local Services'}
+          <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>
+            {isVendor ? 'My Services' : 'Browse Services'}
           </h1>
-          <p className="text-gray-600">
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
             {isVendor
               ? 'Manage your service listings'
-              : locationEnabled
-                ? `Showing services within ${radius} km of your location`
-                : 'Find professional services from local providers in your area'}
+              : 'Professional services from local providers in your area'}
           </p>
         </div>
-        {isVendor && (
-          <Link to="/services/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium">
-            + Add Service
-          </Link>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Near-me toggle (customers only) */}
+          {!isVendor && locationEnabled && (
+            <button
+              onClick={() => setUseNearMe(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 600,
+                border: '1.5px solid', cursor: 'pointer', transition: 'all 0.18s', fontFamily: 'inherit',
+                background: useNearMe ? 'var(--accent)' : 'transparent',
+                color: useNearMe ? 'white' : 'var(--accent)',
+                borderColor: 'var(--accent)',
+                boxShadow: useNearMe ? '0 2px 10px rgba(124,58,237,0.25)' : 'none',
+              }}
+            >
+              📍 {useNearMe ? `Within ${radius} km` : 'Show all'}
+            </button>
+          )}
+          {isVendor && (
+            <Link to="/services/new" className="btn-primary" style={{ padding: '8px 18px', fontSize: '0.86rem' }}>
+              + Add Service
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Location status banner */}
+      {!isVendor && (
+        <>
+          {locationMeta.filtered && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: 'var(--accent)',
+            }}>
+              <span style={{ fontSize: '1rem' }}>📍</span>
+              <span>Showing services from providers within <strong>{locationMeta.radiusKm} km</strong> of your set location.</span>
+              <button onClick={() => setUseNearMe(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                Show all instead →
+              </button>
+            </div>
+          )}
+          {locationMeta.fallback && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: '#92400e',
+            }}>
+              <span style={{ fontSize: '1rem' }}>⚠️</span>
+              <span>No providers found within <strong>{locationMeta.radiusKm} km</strong> of your location — showing <strong>all available services</strong> instead.</span>
+              <button onClick={() => setUseNearMe(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontWeight: 600, fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                Keep showing all →
+              </button>
+            </div>
+          )}
+          {!locationEnabled && !locationMeta.filtered && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(124,58,237,0.04)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: 'var(--muted)',
+            }}>
+              <span>🌐</span>
+              <span>Showing all services. <strong>Set your location</strong> in the bar above to see what's near you.</span>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
@@ -266,11 +355,7 @@ const Services = () => {
                       className="h-48 w-full object-cover object-center"
                     />
                   ) : (
-                    <div className="h-48 w-full bg-gray-200 flex items-center justify-center">
-                      <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2-2v2m8 0V6a2 2 0 012 2v6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M8 6v10a2 2 0 002 2h4a2 2 0 002-2V6" />
-                      </svg>
-                    </div>
+                    <NoImagePlaceholder category={service.category} name={service.title} height="192px" />
                   )}
                 </div>
 
