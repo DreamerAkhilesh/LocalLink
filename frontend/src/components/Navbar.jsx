@@ -78,7 +78,7 @@ const Navbar = () => {
                 </defs>
                 <rect x="2" y="2" width="28" height="28" rx="8" fill="url(#llGrad)" />
                 {/* LL letters */}
-                <text x="5" y="22" fill="white" fontSize="14" fontWeight="800" fontFamily="Inter,sans-serif" letterSpacing="-1">LL</text>
+                <text x="16" y="16" fill="white" fontSize="14" fontWeight="800" fontFamily="Inter,sans-serif" letterSpacing="-1" textAnchor="middle" dominantBaseline="central">LL</text>
               </svg>
             </div>
 
