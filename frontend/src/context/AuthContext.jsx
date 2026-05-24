@@ -162,41 +162,55 @@ export const AuthProvider = ({ children }) => {
     try {
       dispatch({ type: AUTH_ACTIONS.LOGIN_START });
       const response = await authService.login(credentials);
-      dispatch({
-        type: AUTH_ACTIONS.LOGIN_SUCCESS,
-        payload: response.data
-      });
+      dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: response.data });
       return { success: true };
     } catch (error) {
-      const errorMessage = error.response?.data?.message || 'Login failed';
-      dispatch({
-        type: AUTH_ACTIONS.LOGIN_FAILURE,
-        payload: errorMessage
-      });
-      return { success: false, error: errorMessage };
+      const rawResponse = error.response?.data;
+      const errorMessage = rawResponse?.message || 'Login failed';
+      dispatch({ type: AUTH_ACTIONS.LOGIN_FAILURE, payload: errorMessage });
+      return { success: false, error: errorMessage, rawResponse };
     }
   }, []);
   
-  // Register function
+  // Register function — now returns { requiresOtp, email } instead of auto-logging in
   const register = useCallback(async (userData) => {
     try {
       dispatch({ type: AUTH_ACTIONS.REGISTER_START });
       const response = await authService.register(userData);
-      dispatch({
-        type: AUTH_ACTIONS.REGISTER_SUCCESS,
-        payload: response.data
-      });
-      return { success: true };
+      // Registration succeeded but needs OTP — don't log in yet
+      dispatch({ type: AUTH_ACTIONS.CLEAR_ERROR });
+      // Reset loading state without success (no token yet)
+      dispatch({ type: AUTH_ACTIONS.LOAD_USER_FAILURE });
+      return { success: true, requiresOtp: response.requiresOtp, email: response.data?.email };
     } catch (error) {
-      // Show first validation error if available, otherwise generic message
       const validationErrors = error.response?.data?.errors;
       const errorMessage = validationErrors?.length
         ? validationErrors[0].msg
         : error.response?.data?.message || 'Registration failed';
-      dispatch({
-        type: AUTH_ACTIONS.REGISTER_FAILURE,
-        payload: errorMessage
-      });
+      dispatch({ type: AUTH_ACTIONS.REGISTER_FAILURE, payload: errorMessage });
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  // Verify OTP and complete login
+  const verifyOtp = useCallback(async ({ email, code }) => {
+    try {
+      const response = await authService.verifyOtp({ email, code });
+      dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: response.data });
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Verification failed';
+      return { success: false, error: errorMessage };
+    }
+  }, []);
+
+  // Resend OTP
+  const resendOtp = useCallback(async ({ email }) => {
+    try {
+      await authService.resendOtp({ email });
+      return { success: true };
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to resend code';
       return { success: false, error: errorMessage };
     }
   }, []);
@@ -232,7 +246,9 @@ export const AuthProvider = ({ children }) => {
     register,
     logout,
     clearError,
-    updateProfile
+    updateProfile,
+    verifyOtp,
+    resendOtp,
   };
   
   return (

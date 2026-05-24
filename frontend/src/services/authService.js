@@ -34,5 +34,17 @@ export const authService = {
   changePassword: async (passwordData) => {
     const response = await api.put('/auth/change-password', passwordData);
     return response.data;
-  }
+  },
+
+  // Verify OTP after registration
+  verifyOtp: async ({ email, code }) => {
+    const response = await api.post('/auth/verify-otp', { email, code });
+    return response.data;
+  },
+
+  // Resend OTP to email
+  resendOtp: async ({ email }) => {
+    const response = await api.post('/auth/resend-otp', { email });
+    return response.data;
+  },
 };
