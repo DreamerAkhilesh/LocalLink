@@ -1,23 +1,25 @@
 const express = require('express');
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
+const { v2: cloudinary } = require('cloudinary');
+const { CloudinaryStorage } = require('multer-storage-cloudinary');
 const { authenticate } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Ensure uploads directory exists
-const UPLOADS_DIR = path.join(__dirname, '../uploads');
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+// ─── Cloudinary configuration ────────────────────────────────────────────────
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, UPLOADS_DIR),
-  filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    const safeName = `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`;
-    cb(null, safeName);
+// ─── Multer → Cloudinary storage ─────────────────────────────────────────────
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'locallink',          // images go into a "locallink" folder in your Cloudinary account
+    allowed_formats: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+    transformation: [{ width: 800, height: 800, crop: 'limit', quality: 'auto' }],
   },
 });
 
@@ -38,21 +40,20 @@ const upload = multer({
 
 /**
  * POST /api/upload
- * Upload a single image file.
- * Returns { success, data: { url } } — the url can be stored in product/service images array.
+ * Upload a single image to Cloudinary.
+ * Returns { success, data: { url } } — a full HTTPS Cloudinary URL stored in product/service images array.
  */
 router.post('/', authenticate, upload.single('image'), (req, res) => {
   if (!req.file) {
     return res.status(400).json({ success: false, message: 'No image file received.' });
   }
-  // Return a relative URL so the same path works via the CRA proxy in dev
-  // and directly in production. The browser resolves /uploads/... against
-  // the page origin (or the backend origin when used server-side).
-  const url = `/uploads/${req.file.filename}`;
+
+  // req.file.path is the full Cloudinary HTTPS URL when using CloudinaryStorage
+  const url = req.file.path;
   res.json({ success: true, data: { url, filename: req.file.filename } });
 });
 
-// Multer error handler
+// Multer / Cloudinary error handler
 router.use((err, req, res, next) => {
   if (err instanceof multer.MulterError) {
     const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Image must be under 5 MB.' : err.message;

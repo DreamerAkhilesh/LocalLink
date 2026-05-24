@@ -176,6 +176,9 @@ MAILTRAP_PORT=587
 MAILTRAP_USER=apikey
 MAILTRAP_PASS=your_smtp_api_key
 EMAIL_FROM=noreply@your-domain.com
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 ```
 
 ### Frontend environment variables
@@ -193,14 +196,11 @@ cd frontend && npm run build
 # Serve the build/ folder from Vercel / Netlify / S3 + CloudFront
 ```
 
-### ⚠️ Uploaded images in production
+### 🖼️ Uploaded images — Cloudinary (production-ready)
 
-By default Multer writes files to `backend/uploads/`. On **ephemeral** filesystems (Render free tier, Heroku, etc.) these will be lost on redeploy.
+Images are uploaded directly to **Cloudinary** (`multer-storage-cloudinary`). Files are stored permanently in the cloud — they are never written to the server's ephemeral filesystem. Each upload returns a full `https://res.cloudinary.com/...` URL that works across any domain.
 
-For production, swap Multer's `diskStorage` in `backend/routes/uploadRoutes.js` for a cloud storage provider:
-- **Cloudinary** — `multer-storage-cloudinary`
-- **AWS S3** — `multer-s3`
-- **Backblaze B2** — any S3-compatible SDK
+To set it up, add the three `CLOUDINARY_*` env vars listed above (get them from [cloudinary.com](https://cloudinary.com) → Dashboard → API Keys after creating a free account).
 
 ---
 
