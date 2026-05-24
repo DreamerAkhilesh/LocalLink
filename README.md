@@ -43,7 +43,7 @@ It's exactly a combination of various products and services at one place bringin
 | Backend | Node.js 18+, Express 4, Mongoose 8 |
 | Database | MongoDB Atlas |
 | Auth | JWT (jsonwebtoken), bcryptjs |
-| File uploads | Multer 2 (disk storage) |
+| File uploads | Multer 2 + Cloudinary (`multer-storage-cloudinary`) |
 | Email | Nodemailer + Mailtrap (dev) / any SMTP (prod) |
 | Maps | Leaflet / react-leaflet |
 
@@ -213,7 +213,7 @@ To set it up, add the three `CLOUDINARY_*` env vars listed above (get them from 
 | POST | `/api/auth/resend-otp` | — | Resend OTP |
 | POST | `/api/auth/login` | — | Login |
 | GET | `/api/auth/profile` | JWT | Current user profile |
-| POST | `/api/upload` | JWT | Upload image file → `{ url: "/uploads/..." }` |
+| POST | `/api/upload` | JWT | Upload image to Cloudinary → `{ url: "https://res.cloudinary.com/..." }` |
 | GET | `/api/products` | optional | Products list (search, filter, geo) |
 | POST | `/api/products` | Vendor JWT | Create product |
 | PUT | `/api/products/:id` | Vendor JWT | Update product |
