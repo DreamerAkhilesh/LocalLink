@@ -23,7 +23,12 @@ const ProtectedRoute = ({ children, requiredRole = null }) => {
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
-  
+
+  // Admins should never land on the regular dashboard — send them to /admin
+  if (user?.role === 'admin') {
+    return <Navigate to="/admin" replace />;
+  }
+
   // Check role-based access if required
   if (requiredRole && user?.role !== requiredRole) {
     return (

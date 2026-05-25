@@ -40,9 +40,11 @@ const Navbar = () => {
     ? user.name.split(/[\s._-]+/).map(s => s[0]).filter(Boolean).slice(0, 2).join('').toUpperCase()
     : 'U';
 
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+
   const navLinks = [
     ...(isAuthenticated
-      ? [{ to: '/dashboard', label: 'Dashboard' }]
+      ? [{ to: dashboardPath, label: user?.role === 'admin' ? 'Admin' : 'Dashboard' }]
       : [{ to: '/', label: 'Home' }]
     ),
     { to: '/products', label: 'Products' },
@@ -256,7 +258,7 @@ const Navbar = () => {
 
                     {/* Menu items */}
                     {[
-                      { to: '/dashboard', icon: <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />, label: 'Dashboard' },
+                      { to: dashboardPath, icon: <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />, label: user?.role === 'admin' ? 'Admin Panel' : 'Dashboard' },
                       { to: '/profile', icon: <><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></>, label: 'Profile' },
                       ...(user?.role === 'customer' ? [
                         { to: '/orders', icon: <path d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />, label: 'My Orders' },
@@ -366,7 +368,7 @@ const Navbar = () => {
               {isAuthenticated ? (
                 <>
                   <div style={{ height: 1, background: 'var(--border)', margin: '6px 0' }} />
-                  <Link to="/dashboard" onClick={() => setIsMobileOpen(false)} style={{ padding: '10px 14px', borderRadius: 10, fontWeight: 500, fontSize: '0.92rem', textDecoration: 'none', color: 'var(--text-secondary)' }}>Dashboard</Link>
+                  <Link to={dashboardPath} onClick={() => setIsMobileOpen(false)} style={{ padding: '10px 14px', borderRadius: 10, fontWeight: 500, fontSize: '0.92rem', textDecoration: 'none', color: 'var(--text-secondary)' }}>{user?.role === 'admin' ? 'Admin Panel' : 'Dashboard'}</Link>
                   <Link to="/profile" onClick={() => setIsMobileOpen(false)} style={{ padding: '10px 14px', borderRadius: 10, fontWeight: 500, fontSize: '0.92rem', textDecoration: 'none', color: 'var(--text-secondary)' }}>Profile</Link>
                   <button onClick={handleLogout} style={{ padding: '10px 14px', borderRadius: 10, fontWeight: 500, fontSize: '0.92rem', textAlign: 'left', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)', fontFamily: 'inherit' }}>
                     Sign Out
