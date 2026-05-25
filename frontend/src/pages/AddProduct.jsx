@@ -25,7 +25,7 @@ const AddProduct = () => {
 
   const [form, setForm] = useState({
     name: '', description: '', category: '', price: '',
-    stock: '', unit: 'piece', images: [], discount: 0
+    stock: 1, unit: 'piece', images: [], discount: 0
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);

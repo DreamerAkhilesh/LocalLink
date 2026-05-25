@@ -37,7 +37,8 @@ const getServices = async (req, res) => {
       }
     }
 
-    const filter = { isAvailable: true, status: 'active' };
+    // Status 'active' (admin-approved) is the primary visibility gate.
+    const filter = { status: 'active' };
     if (providerIds) filter.provider = { $in: providerIds };
     if (category) filter.category = category;
     if (search) {

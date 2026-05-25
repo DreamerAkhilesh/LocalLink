@@ -39,7 +39,10 @@ const getProducts = async (req, res) => {
       }
     }
 
-    const filter = { isAvailable: true, status: 'active' };
+    // Status 'active' (admin-approved) is the primary visibility gate.
+    // isAvailable (stock-based) is NOT filtered here so out-of-stock products
+    // still appear — the UI shows an "Out of Stock" badge instead.
+    const filter = { status: 'active' };
     if (vendorIds) filter.vendor = { $in: vendorIds };
     if (category) filter.category = category;
     if (search) {
@@ -104,10 +107,10 @@ const getProduct = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Product not found' });
     }
 
-    // Allow vendor to view their own inactive products (for editing)
-    // For public access, only show active/available products
+    // Block access to non-active products for public viewers.
+    // Out-of-stock (isAvailable=false) products are still accessible if admin-approved (status=active).
     const isOwner = req.user && product.vendor && req.user.vendorProfileId?.toString() === product.vendor.toString();
-    if (!isOwner && (!product.isAvailable || product.status !== 'active')) {
+    if (!isOwner && product.status !== 'active') {
       return res.status(404).json({ success: false, message: 'Product is not available' });
     }
 
