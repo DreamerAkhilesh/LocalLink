@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, vendorProfile } = useAuth();
   const [stats, setStats] = useState({});
   const [recentItems, setRecentItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +71,37 @@ const Dashboard = () => {
           {user?.role === 'vendor' ? 'Manage your products, services, and orders' : 'Track your orders and discover local offerings'}
         </p>
       </div>
+
+      {/* Vendor pending approval banner */}
+      {user?.role === 'vendor' && vendorProfile?.verificationStatus !== 'verified' && (
+        <div style={{
+          background: vendorProfile?.verificationStatus === 'rejected'
+            ? 'rgba(239,68,68,0.08)' : 'rgba(245,158,11,0.08)',
+          border: `1px solid ${vendorProfile?.verificationStatus === 'rejected'
+            ? 'rgba(239,68,68,0.3)' : 'rgba(245,158,11,0.3)'}`,
+          borderRadius: 12, padding: '14px 18px', marginBottom: 24,
+          display: 'flex', alignItems: 'flex-start', gap: 10,
+        }}>
+          <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>
+            {vendorProfile?.verificationStatus === 'rejected' ? '❌' : '⏳'}
+          </span>
+          <div>
+            <div style={{
+              fontWeight: 700, fontSize: '0.9rem',
+              color: vendorProfile?.verificationStatus === 'rejected' ? '#991b1b' : '#92400e',
+            }}>
+              {vendorProfile?.verificationStatus === 'rejected'
+                ? 'Account Rejected'
+                : 'Pending Admin Approval'}
+            </div>
+            <div style={{ fontSize: '0.82rem', color: 'var(--muted)', marginTop: 2 }}>
+              {vendorProfile?.verificationStatus === 'rejected'
+                ? `Your vendor account was rejected. ${vendorProfile?.verificationNote ? 'Reason: ' + vendorProfile.verificationNote : 'Please contact support.'}`
+                : 'Your vendor account is under review. You can browse the platform but cannot add products or services until approved by an admin.'}
+            </div>
+          </div>
+        </div>
+      )}
 
       {user?.role === 'vendor'
         ? <VendorDashboard stats={stats} recentItems={recentItems} />

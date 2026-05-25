@@ -10,6 +10,7 @@ import { ToastProvider } from './context/ToastContext';
 import Navbar from './components/Navbar';
 import Footer from './components/Footer';
 import ProtectedRoute from './components/ProtectedRoute';
+import AdminRoute from './components/AdminRoute';
 import LocationBar from './components/LocationBar';
 import ToastContainer from './components/ToastContainer';
 
@@ -29,16 +30,21 @@ import AddProduct from './pages/AddProduct';
 import AddService from './pages/AddService';
 import ProductDetail from './pages/ProductDetail';
 import ServiceDetail from './pages/ServiceDetail';
+import AdminDashboard from './pages/admin/AdminDashboard';
+import AdminVendors from './pages/admin/AdminVendors';
+import AdminProducts from './pages/admin/AdminProducts';
+import AdminServices from './pages/admin/AdminServices';
 
-// Smart home route: authenticated users go straight to their dashboard
+// Smart home route: authenticated users go straight to their dashboard (or /admin for admins)
 const HomeOrDashboard = () => {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, user, loading } = useAuth();
   if (loading) return (
     <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div className="spinner" />
     </div>
   );
-  return isAuthenticated ? <Navigate to="/dashboard" replace /> : <Home />;
+  if (!isAuthenticated) return <Home />;
+  return <Navigate to={user?.role === 'admin' ? '/admin' : '/dashboard'} replace />;
 };
 
 function App() {
@@ -94,6 +100,12 @@ function App() {
                     <Route path="/services/:id/edit" element={
                       <ProtectedRoute><AddService /></ProtectedRoute>
                     } />
+
+                    {/* Admin Routes */}
+                    <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+                    <Route path="/admin/vendors" element={<AdminRoute><AdminVendors /></AdminRoute>} />
+                    <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
+                    <Route path="/admin/services" element={<AdminRoute><AdminServices /></AdminRoute>} />
 
                     {/* 404 */}
                     <Route path="*" element={

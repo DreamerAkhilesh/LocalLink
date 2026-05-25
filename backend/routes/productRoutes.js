@@ -7,7 +7,7 @@ const {
   deleteProduct,
   getVendorProducts
 } = require('../controllers/productController');
-const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { authenticate, authorize, optionalAuth, requireVerifiedVendor } = require('../middleware/auth');
 const {
   validateProduct,
   validateProductUpdate
@@ -41,7 +41,7 @@ router.get('/:id', getProduct);
  * @desc    Create new product (Vendor only)
  * @access  Private/Vendor
  */
-router.post('/', authenticate, authorize('vendor'), validateProduct, createProduct);
+router.post('/', authenticate, authorize('vendor'), requireVerifiedVendor, validateProduct, createProduct);
 
 /**
  * @route   PUT /api/products/:id

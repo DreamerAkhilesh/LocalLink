@@ -13,12 +13,14 @@ const Login = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
+  const { user } = useAuth();
   useEffect(() => {
     if (isAuthenticated) {
-      const from = location.state?.from?.pathname || '/dashboard';
+      const defaultPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+      const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, location]);
+  }, [isAuthenticated, user, navigate, location]);
 
   useEffect(() => { clearError(); }, [clearError]);
 
@@ -33,7 +35,9 @@ const Login = () => {
     setIsSubmitting(false);
     if (result.success) {
       toast.success('Welcome back! 👋');
-      const from = location.state?.from?.pathname || '/dashboard';
+      const role = result.user?.role;
+      const defaultPath = role === 'admin' ? '/admin' : '/dashboard';
+      const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     } else if (result.error) {
       // If account needs OTP verification, redirect to verify page

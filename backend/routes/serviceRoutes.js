@@ -7,7 +7,7 @@ const {
   deleteService,
   getVendorServices
 } = require('../controllers/serviceController');
-const { authenticate, authorize, optionalAuth } = require('../middleware/auth');
+const { authenticate, authorize, optionalAuth, requireVerifiedVendor } = require('../middleware/auth');
 const {
   validateService,
   validateServiceUpdate
@@ -41,7 +41,7 @@ router.get('/:id', getService);
  * @desc    Create new service (Vendor only)
  * @access  Private/Vendor
  */
-router.post('/', authenticate, authorize('vendor'), validateService, createService);
+router.post('/', authenticate, authorize('vendor'), requireVerifiedVendor, validateService, createService);
 
 /**
  * @route   PUT /api/services/:id

@@ -163,7 +163,7 @@ export const AuthProvider = ({ children }) => {
       dispatch({ type: AUTH_ACTIONS.LOGIN_START });
       const response = await authService.login(credentials);
       dispatch({ type: AUTH_ACTIONS.LOGIN_SUCCESS, payload: response.data });
-      return { success: true };
+      return { success: true, user: response.data.user };
     } catch (error) {
       const rawResponse = error.response?.data;
       const errorMessage = rawResponse?.message || 'Login failed';

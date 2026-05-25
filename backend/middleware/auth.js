@@ -123,8 +123,36 @@ const optionalAuth = async (req, res, next) => {
   }
 };
 
+/**
+ * Vendor Verification Middleware
+ * Blocks vendors whose business hasn't been approved by an admin yet.
+ * Must run AFTER authenticate + authorize('vendor').
+ */
+const requireVerifiedVendor = async (req, res, next) => {
+  try {
+    const VendorProfile = require('../models/VendorProfile');
+    const vendor = await VendorProfile.findOne({ user: req.user._id });
+    if (!vendor) {
+      return res.status(404).json({ success: false, message: 'Vendor profile not found.' });
+    }
+    if (vendor.verificationStatus !== 'verified') {
+      return res.status(403).json({
+        success: false,
+        message: vendor.verificationStatus === 'rejected'
+          ? `Your vendor account was rejected. Reason: ${vendor.verificationNote || 'Contact support.'}`
+          : 'Your vendor account is pending admin approval. You cannot add listings yet.',
+        verificationStatus: vendor.verificationStatus,
+      });
+    }
+    next();
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Verification check failed.' });
+  }
+};
+
 module.exports = {
   authenticate,
   authorize,
-  optionalAuth
+  optionalAuth,
+  requireVerifiedVendor,
 };

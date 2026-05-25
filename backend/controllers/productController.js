@@ -148,7 +148,8 @@ const createProduct = async (req, res) => {
 
     const productData = {
       ...req.body,
-      vendor: vendorProfile._id
+      vendor: vendorProfile._id,
+      status: 'pending-approval', // requires admin approval before going live
     };
 
     const product = new Product(productData);
