@@ -18,15 +18,23 @@ const getServices = async (req, res) => {
     // If location provided, find vendors within radius first
     let providerIds = null;
     if (lat && lng) {
-      const nearbyVendors = await VendorProfile.find({
-        location: {
-          $nearSphere: {
-            $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
-            $maxDistance: parseFloat(radius) * 1000
+      try {
+        const nearbyVendors = await VendorProfile.find({
+          location: {
+            $nearSphere: {
+              $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+              $maxDistance: parseFloat(radius) * 1000
+            }
           }
+        }).select('_id');
+        // Only filter by provider if vendors were found — empty array → { $in: [] } → 0 results
+        if (nearbyVendors.length > 0) {
+          providerIds = nearbyVendors.map(v => v._id);
         }
-      }).select('_id');
-      providerIds = nearbyVendors.map(v => v._id);
+      } catch (geoErr) {
+        // If 2dsphere index isn't ready or coords are invalid, fall through without geo filter
+        console.warn('Geo query failed, showing all services:', geoErr.message);
+      }
     }
 
     const filter = { isAvailable: true, status: 'active' };
@@ -67,6 +75,7 @@ const getServices = async (req, res) => {
 
     const total = await Service.countDocuments(filter);
 
+    const locationRequested = !!(lat && lng);
     res.json({
       success: true,
       data: {
@@ -77,7 +86,10 @@ const getServices = async (req, res) => {
           total,
           hasNext: skip + services.length < total,
           hasPrev: parseInt(page) > 1
-        }
+        },
+        locationFiltered: locationRequested && providerIds !== null,
+        locationFallback: locationRequested && providerIds === null,
+        radiusKm: locationRequested ? parseFloat(radius) : null,
       }
     });
   } catch (error) {

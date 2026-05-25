@@ -1,273 +1,232 @@
-# Local Link - Community-Based Service Exchange Platform
+# LocalLink 🛍️
 
-## 🎯 Project Overview
-Local Link is a hyperlocal marketplace platform that connects local shop owners, skilled service providers, and customers in a community-based ecosystem. The platform focuses on transparency, trust, and geolocation-based discovery to support local commerce.
-
-## 👥 Target Users
-- **Local Shop Owners**: Kirana stores, clothing shops, small retailers
-- **Service Providers**: Plumbers, electricians, carpenters, painters, artisans
-- **Customers**: People searching for nearby products or services
-
-## 🏗️ Tech Stack
-
-### Frontend
-- React.js 18
-- Tailwind CSS
-- React Router v6
-- Axios
-- Context API
-- Leaflet.js + react-leaflet (interactive maps)
-
-### Backend
-- Node.js
-- Express.js
-- RESTful APIs
-- MVC Architecture
-
-### Database
-- MongoDB (Local)
-- Mongoose ODM
-- MongoDB Compass
-- Geospatial indexing (2dsphere)
-
-### Authentication
-- JWT (Access Token)
-- bcrypt for password hashing
-
-## 📁 Project Structure
-```
-Local-Link/
-├── frontend/
-│   └── src/
-│       ├── components/
-│       │   ├── LocationBar.jsx        # Address search + GPS location bar
-│       │   ├── LocationPicker.jsx     # Leaflet map modal for vendor location
-│       │   ├── NotificationBell.jsx   # In-app notification bell
-│       │   ├── ServiceBookingModal.jsx
-│       │   ├── Navbar.jsx
-│       │   └── Cart.jsx
-│       ├── pages/
-│       │   ├── Products.jsx           # Role-based product listing
-│       │   ├── Services.jsx           # Role-based service listing
-│       │   ├── ProductDetail.jsx      # Product detail + add to cart
-│       │   ├── ServiceDetail.jsx      # Service detail + book now
-│       │   ├── AddProduct.jsx         # Vendor create/edit product
-│       │   ├── AddService.jsx         # Vendor create/edit service
-│       │   ├── Orders.jsx             # Order management (customer + vendor)
-│       │   ├── Bookings.jsx           # Booking management (customer + vendor)
-│       │   ├── Dashboard.jsx
-│       │   └── Profile.jsx
-│       ├── context/
-│       │   ├── AuthContext.jsx
-│       │   ├── CartContext.jsx
-│       │   ├── LocationContext.jsx    # GPS + address search state
-│       │   └── NotificationContext.jsx # In-app notifications (30s polling)
-│       ├── services/
-│       └── App.jsx
-├── backend/
-│   ├── controllers/
-│   │   ├── orderController.js         # Order + payment status + notifications
-│   │   ├── bookingController.js       # Booking + payment status + notifications
-│   │   ├── productController.js
-│   │   └── serviceController.js
-│   ├── models/
-│   │   ├── Order.js                   # Payment status: unpaid/received/verified
-│   │   ├── Booking.js                 # Payment status: unpaid/received/verified
-│   │   ├── Notification.js            # In-app notification model
-│   │   ├── VendorProfile.js           # GeoJSON location field
-│   │   ├── Product.js
-│   │   ├── Service.js
-│   │   └── User.js
-│   ├── routes/
-│   │   ├── notificationRoutes.js
-│   │   ├── orderRoutes.js
-│   │   ├── bookingRoutes.js
-│   │   └── ...
-│   ├── tests/
-│   ├── middleware/
-│   ├── config/
-│   ├── utils/
-│   └── server.js
-└── README.md
-```
-
-## 🚀 How to Run Locally
-
-### Prerequisites
-- Node.js (v14+)
-- MongoDB installed locally
-- MongoDB Compass (optional)
-
-### Backend Setup
-```bash
-cd backend
-npm install
-npm start
-```
-
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm start
-```
-
-### Running Tests
-```bash
-cd backend
-node tests/test-booking-system.js
-node tests/test-booking-scenarios.js
-node tests/test-frontend-integration.js
-```
-
-## ✅ Core Features
-
-### 🔐 Authentication & User Management
-- JWT-based Authentication with role-based access control
-- Dual role registration: Customer & Vendor
-- Profile management with address and business info
-- Password validation (uppercase + lowercase + number)
-
-### 🗺️ Geolocation-Based Discovery
-- Vendors set their business location via interactive Leaflet map
-- Customers search any address (Nominatim autocomplete — no API key needed)
-- GPS detection with one click
-- Radius-based filtering: 2km / 5km / 10km / 20km / 50km
-- Products and services automatically filtered by vendor proximity
-- Location bar visible on every page
-
-### 🛍️ Product Management
-- Vendor: Add, edit, delete products with image URLs
-- Vendor: Category, price, stock, unit, discount management
-- Customer: Browse all products with search, category, price, sort filters
-- Customer: Product detail page with image gallery and quantity selector
-- Soft delete — inactive products hidden from all views
-
-### 🛠️ Service Management
-- Vendor: Add, edit, delete services with flexible pricing models
-- Pricing types: Fixed / Hourly / Per-visit / Negotiable
-- Customer: Browse all services with search, category, price, sort filters
-- Customer: Service detail page with booking integration
-- Soft delete — inactive services hidden from all views
-
-### 📦 Order Management System
-- Shopping cart with localStorage persistence
-- Multi-vendor order support (separate orders per vendor)
-- Complete checkout with home delivery or self-pickup
-- **Delivery status workflow** (vendor-controlled):
-  `Pending → Confirmed → Preparing → Ready → Out for Delivery → Delivered`
-- **Payment status tracking** (independent of delivery):
-  `Unpaid → Payment Received → Payment Verified`
-- Optional note on every status update
-- Full timeline with timestamps in order details
-- Stock auto-deducted on order, restored on cancellation
-- Customer can cancel pending/confirmed orders
-
-### 📅 Booking Management System
-- Service booking with date/time scheduling
-- Service location options: Home / Vendor location / Online
-- Conflict prevention — no double bookings for same vendor + time slot
-- **Booking status workflow** (vendor-controlled):
-  `Pending → Confirmed → In-Progress → Completed`
-- **Payment status tracking** (same as orders):
-  `Unpaid → Payment Received → Payment Verified`
-- Optional note on every status update
-- Customer can reschedule or cancel bookings
-- Vendor booking statistics dashboard with revenue tracking
-- Revenue only counts payment-verified completed bookings
-
-### 🔔 In-App Notification System
-- Notification bell in navbar with unread count badge
-- Notifications triggered on:
-  - New order placed (vendor notified)
-  - Order/booking status change (customer notified)
-  - Payment status update (both notified)
-  - Order/booking cancellation (both notified)
-- 30-second polling — no Socket.io required
-- Mark all read / mark individual read
-- Click notification to navigate to orders/bookings page
-- Last 30 notifications stored per user
-
-### 💳 Payment System
-- Cash on Delivery / Pay at Shop / Pay at Service
-- Three-stage payment tracking: Unpaid → Received → Verified
-- Vendor manually marks payment received and verified
-- Revenue dashboard only counts verified payments
-
-### 📊 Dashboard & Analytics
-- Customer: total orders, bookings, amount spent
-- Vendor: total products, services, orders, bookings
-- Vendor booking stats: today's bookings, upcoming, revenue
-- Quick action shortcuts for all key features
-
-## 👥 User Roles
-
-### Customer
-- Browse products and services (filtered by location if set)
-- Add to cart, checkout, track orders
-- Book services, reschedule, cancel
-- View notification history
-
-### Vendor
-- Add/edit/delete products and services
-- Set business location on interactive map
-- Manage orders: advance delivery status, mark payment
-- Manage bookings: confirm, start, complete, mark payment
-- View booking statistics and verified revenue
-
-## 🗺️ Location System Details
-
-### For Customers
-1. Click the location bar at the top of any page
-2. Type any city, area, or address — live suggestions appear
-3. Or click "⊕ Use GPS" for automatic detection
-4. Select radius (2–50 km)
-5. Products and services pages now show only nearby vendors
-
-### For Vendors
-1. Go to Profile page
-2. Scroll to "Business Location" section
-3. Click "🗺️ Set Business Location"
-4. Search any address OR click on the map OR use GPS
-5. Confirm — location saved to your vendor profile
-
-## 📊 Database Schema
-- **User** — role-based authentication
-- **VendorProfile** — business info + GeoJSON location (2dsphere indexed)
-- **Product** — inventory with soft delete
-- **Service** — service offerings with soft delete
-- **Order** — delivery status + payment status + timeline
-- **Booking** — booking status + payment status + timeline
-- **Notification** — in-app notifications with read tracking
-
-## 🧪 Testing
-- 12 comprehensive booking system tests (100% pass rate)
-- Frontend integration tests
-- Multiple booking scenario tests
-
-## 🔮 Future Scope
-- Online payments (Razorpay/Stripe)
-- Ratings & Reviews system
-- Real-time notifications via Socket.io
-- Delivery partner integration
-- AI-based recommendation engine
-- Push notifications (PWA)
-- Advanced analytics dashboard
-
-## 🎓 Academic Context
-Demonstrates:
-- Full-stack MERN development
-- Geospatial queries with MongoDB 2dsphere indexes
-- Role-based access control
-- Real-world e-commerce patterns (multi-vendor, inventory, payment lifecycle)
-- Clean MVC architecture with separation of concerns
-
-## 📈 Project Statistics
-- **Total Commits**: 75+ professional commits
-- **API Endpoints**: 35+ RESTful endpoints
-- **React Components**: 20+ reusable components
-- **Database Models**: 7 Mongoose schemas
-- **Test Coverage**: 100% for booking system
+A full-stack hyperlocal marketplace where customers discover nearby shops and service providers, place orders, book services, and track everything in one place.
 
 ---
-**Built with ❤️ for local community empowerment**
+
+## Features
+
+### For Customers
+- **Browse products & services** — filtered by location radius or browse all
+- **Location-aware search** — set your city/address and radius; fallback to all listings if no vendors are nearby
+- **Add to cart & checkout** — home delivery or self-pickup, COD or pay-at-shop
+- **Book services** — choose a date/time slot, track booking status
+- **Order & booking history** — real-time status updates with timeline
+- **Notifications** — in-app alerts for order/booking changes
+
+### For Vendors
+- **Dashboard** — overview of orders, bookings, products, and services
+- **Product management** — add/edit/delete products with image upload (drag-and-drop or browse), pricing, stock, discounts
+- **Service management** — add/edit/delete services with pricing types (fixed / hourly / per-visit / negotiable), duration, and availability slots
+- **Order fulfilment** — accept, prepare, and mark orders as delivered
+- **Booking management** — confirm, start, complete, or cancel bookings
+
+### Authentication
+- Email + phone registration with **OTP email verification** (Mailtrap in dev, any SMTP in prod)
+- JWT-based sessions (7-day expiry)
+- Separate customer and vendor roles
+
+### UX
+- Purple Glass design system (dark/light-friendly CSS variables)
+- Toast notification system (success / error / info / warning)
+- Category-aware image placeholders when no photo is uploaded
+- Debounced search filters (no per-keystroke API calls)
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, React Router 6, Tailwind CSS, Axios |
+| Backend | Node.js 18+, Express 4, Mongoose 8 |
+| Database | MongoDB Atlas |
+| Auth | JWT (jsonwebtoken), bcryptjs |
+| File uploads | Multer 2 (disk storage) |
+| Email | Nodemailer + Mailtrap (dev) / any SMTP (prod) |
+| Maps | Leaflet / react-leaflet |
+
+---
+
+## Project Structure
+
+```
+LocalLink/
+├── backend/
+│   ├── config/          # Database connection
+│   ├── controllers/     # Route handlers
+│   ├── middleware/      # Auth, error handling
+│   ├── models/          # Mongoose schemas
+│   ├── routes/          # Express routers
+│   ├── services/        # Email service (Nodemailer)
+│   ├── utils/           # Validation rules (express-validator)
+│   ├── uploads/         # User-uploaded images (gitignored)
+│   ├── seed.js          # Demo data seeder
+│   ├── server.js        # Entry point
+│   └── .env.example     # Environment variable template
+└── frontend/
+    ├── public/
+    ├── src/
+    │   ├── components/  # Reusable UI (Navbar, ImageUploader, ToastContainer…)
+    │   ├── context/     # React Context (Auth, Cart, Location, Toast, Notifications)
+    │   ├── pages/       # Route-level page components
+    │   └── services/    # Axios API instance & auth service
+    ├── package.json     # "proxy": "http://localhost:5000" for dev
+    └── .env.example     # Environment variable template
+```
+
+---
+
+## Local Development
+
+### Prerequisites
+- Node.js 18+
+- MongoDB Atlas account (free tier works)
+- [Mailtrap](https://mailtrap.io) account (free) for email OTP
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/your-username/LocalLink.git
+cd LocalLink
+
+# Backend dependencies
+cd backend && npm install
+
+# Frontend dependencies
+cd ../frontend && npm install
+```
+
+### 2. Configure environment variables
+
+**Backend** — copy the template and fill in your values:
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+| Variable | Description |
+|----------|-------------|
+| `MONGODB_URI` | MongoDB Atlas connection string |
+| `JWT_SECRET` | Long random string (32+ chars) for signing tokens |
+| `CLIENT_URL` | Frontend origin — `http://localhost:3000` for dev |
+| `MAILTRAP_HOST` | `sandbox.smtp.mailtrap.io` |
+| `MAILTRAP_PORT` | `2525` |
+| `MAILTRAP_USER` | From Mailtrap → your inbox → SMTP Settings |
+| `MAILTRAP_PASS` | From Mailtrap → your inbox → SMTP Settings |
+
+**Frontend** — in development no `.env` is needed. The `"proxy": "http://localhost:5000"` entry in `frontend/package.json` forwards all `/api/*` requests to the backend automatically.
+
+### 3. Seed demo data (optional)
+
+```bash
+cd backend
+node seed.js           # Adds demo users, vendors, products, services
+node seed.js --clean   # Wipes everything and re-seeds
+```
+
+**Demo credentials** (all passwords: `Test123456`)
+
+| Role | Email |
+|------|-------|
+| Customer | john@example.com |
+| Customer | priya@example.com |
+| Customer | rahul@example.com |
+| Customer | ananya@example.com |
+| Vendor — Grocery | sharma.grocery@example.com |
+| Vendor — Bakery | bakery.wala@example.com |
+| Vendor — Electronics | techtronics@example.com |
+| Vendor — Fashion | fashionhub@example.com |
+| Vendor — Pharmacy | medplus.pharmacy@example.com |
+| Vendor — Plumbing | quickfix.plumber@example.com |
+| Vendor — Electrical | sparkselectric@example.com |
+| Vendor — Cleaning | cleanmaster@example.com |
+| Vendor — Tutoring | skilltutor@example.com |
+| Vendor — Carpentry | woodcraft@example.com |
+
+### 4. Start the servers
+
+```bash
+# Terminal 1 — backend (http://localhost:5000)
+cd backend && npm run dev
+
+# Terminal 2 — frontend (http://localhost:3000)
+cd frontend && npm start
+```
+
+Open **http://localhost:3000**
+
+---
+
+## Deployment
+
+### Backend environment variables
+
+Set these on your hosting platform (Render, Railway, Fly.io, etc.):
+
+```env
+PORT=5000
+NODE_ENV=production
+MONGODB_URI=your_production_mongodb_uri
+JWT_SECRET=your_long_random_production_secret
+CLIENT_URL=https://your-frontend-domain.com
+MAILTRAP_HOST=smtp.sendgrid.net    # or any SMTP provider
+MAILTRAP_PORT=587
+MAILTRAP_USER=apikey
+MAILTRAP_PASS=your_smtp_api_key
+EMAIL_FROM=noreply@your-domain.com
+```
+
+### Frontend environment variables
+
+Set before `npm run build` or in your hosting dashboard (Vercel, Netlify, etc.):
+
+```env
+REACT_APP_API_URL=https://your-backend-domain.com/api
+```
+
+### Build
+
+```bash
+cd frontend && npm run build
+# Serve the build/ folder from Vercel / Netlify / S3 + CloudFront
+```
+
+### ⚠️ Uploaded images in production
+
+By default Multer writes files to `backend/uploads/`. On **ephemeral** filesystems (Render free tier, Heroku, etc.) these will be lost on redeploy.
+
+For production, swap Multer's `diskStorage` in `backend/routes/uploadRoutes.js` for a cloud storage provider:
+- **Cloudinary** — `multer-storage-cloudinary`
+- **AWS S3** — `multer-s3`
+- **Backblaze B2** — any S3-compatible SDK
+
+---
+
+## API Quick Reference
+
+| Method | Endpoint | Auth | Description |
+|--------|----------|------|-------------|
+| POST | `/api/auth/register` | — | Register (triggers OTP email) |
+| POST | `/api/auth/verify-otp` | — | Verify OTP → returns JWT |
+| POST | `/api/auth/resend-otp` | — | Resend OTP |
+| POST | `/api/auth/login` | — | Login |
+| GET | `/api/auth/profile` | JWT | Current user profile |
+| POST | `/api/upload` | JWT | Upload image file → `{ url: "/uploads/..." }` |
+| GET | `/api/products` | optional | Products list (search, filter, geo) |
+| POST | `/api/products` | Vendor JWT | Create product |
+| PUT | `/api/products/:id` | Vendor JWT | Update product |
+| DELETE | `/api/products/:id` | Vendor JWT | Delete product |
+| GET | `/api/services` | optional | Services list (search, filter, geo) |
+| POST | `/api/services` | Vendor JWT | Create service |
+| GET | `/api/orders` | JWT | My orders |
+| POST | `/api/orders` | Customer JWT | Place order |
+| GET | `/api/bookings` | JWT | My bookings |
+| POST | `/api/bookings` | Customer JWT | Book a service |
+| GET | `/api/notifications` | JWT | Notifications |
+
+---
+
+## License
+
+MIT

@@ -1,9 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from '../context/LocationContext';
 
-/**
- * Address search with autocomplete using Nominatim (free, no API key)
- */
 const AddressSearch = ({ onSelect, placeholder = 'Search any location...' }) => {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
@@ -11,12 +8,9 @@ const AddressSearch = ({ onSelect, placeholder = 'Search any location...' }) => 
   const debounceRef = useRef(null);
   const wrapperRef = useRef(null);
 
-  // Close dropdown on outside click
   useEffect(() => {
     const handler = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
-        setResults([]);
-      }
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) setResults([]);
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
@@ -48,42 +42,57 @@ const AddressSearch = ({ onSelect, placeholder = 'Search any location...' }) => 
   };
 
   return (
-    <div ref={wrapperRef} className="relative w-full">
-      <div className="flex items-center border border-gray-300 rounded-lg bg-white overflow-hidden">
-        <svg className="w-4 h-4 text-gray-400 ml-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+      <div style={{
+        display: 'flex', alignItems: 'center',
+        border: '1.5px solid var(--border)', borderRadius: 10,
+        background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(6px)',
+        overflow: 'hidden', transition: 'border-color 0.15s',
+      }}
+        onFocusWithin={e => e.currentTarget.style.borderColor = 'var(--accent)'}
+      >
+        <svg style={{ width: 15, height: 15, color: 'var(--muted)', marginLeft: 11, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
         <input
-          type="text"
-          value={query}
-          onChange={(e) => search(e.target.value)}
+          type="text" value={query} onChange={(e) => search(e.target.value)}
           placeholder={placeholder}
-          className="flex-1 px-3 py-2 text-sm outline-none bg-transparent"
+          style={{ flex: 1, padding: '8px 10px', fontSize: '0.84rem', outline: 'none', background: 'transparent', border: 'none', color: 'var(--text)', fontFamily: 'inherit' }}
         />
-        {searching && <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500 mr-3"></div>}
+        {searching && <div className="spinner" style={{ width: 14, height: 14, borderWidth: 2, marginRight: 10 }} />}
         {query && !searching && (
-          <button onClick={() => { setQuery(''); setResults([]); }} className="mr-3 text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+          <button onClick={() => { setQuery(''); setResults([]); }} style={{ marginRight: 10, background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '1.1rem', lineHeight: 1 }}>&times;</button>
         )}
       </div>
 
       {results.length > 0 && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-xl z-50 max-h-64 overflow-y-auto">
+        <div style={{
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
+          background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(16px)',
+          border: '1px solid var(--border)', borderRadius: 12,
+          boxShadow: '0 20px 60px rgba(0,0,0,0.14)', zIndex: 9999, maxHeight: 240, overflowY: 'auto',
+        }}>
           {results.map((item) => (
             <button
               key={item.place_id}
               onClick={() => handleSelect(item)}
-              className="w-full text-left px-4 py-3 hover:bg-blue-50 border-b border-gray-100 last:border-0"
+              style={{
+                width: '100%', textAlign: 'left', padding: '10px 14px',
+                borderBottom: '1px solid var(--border)', background: 'none',
+                border: 'none', cursor: 'pointer', display: 'flex', gap: 10, alignItems: 'flex-start',
+                fontFamily: 'inherit', transition: 'background 0.1s',
+              }}
+              onMouseEnter={e => e.currentTarget.style.background = 'var(--accent-glow)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'none'}
             >
-              <div className="flex items-start gap-2">
-                <span className="text-blue-500 mt-0.5 flex-shrink-0">📍</span>
-                <div>
-                  <p className="text-sm font-medium text-gray-800 line-clamp-1">
-                    {item.display_name.split(',')[0]}
-                  </p>
-                  <p className="text-xs text-gray-500 line-clamp-1">
-                    {item.display_name.split(',').slice(1, 4).join(',')}
-                  </p>
-                </div>
+              <span style={{ color: 'var(--accent)', marginTop: 1, flexShrink: 0 }}>📍</span>
+              <div>
+                <p style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--text)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
+                  {item.display_name.split(',')[0]}
+                </p>
+                <p style={{ fontSize: '0.76rem', color: 'var(--muted)', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 340 }}>
+                  {item.display_name.split(',').slice(1, 4).join(',')}
+                </p>
               </div>
             </button>
           ))}
@@ -93,10 +102,6 @@ const AddressSearch = ({ onSelect, placeholder = 'Search any location...' }) => 
   );
 };
 
-/**
- * LocationBar — shown at top of every page
- * Customers can search any address or use GPS
- */
 const LocationBar = () => {
   const { location, radius, loading, error, locationEnabled, detectLocation, clearLocation, updateRadius, saveLocation } = useLocation();
   const [showSearch, setShowSearch] = useState(false);
@@ -108,43 +113,73 @@ const LocationBar = () => {
   };
 
   return (
-    <div className="bg-blue-50 border-b border-blue-100 px-4 py-2">
-      <div className="container mx-auto">
-        <div className="flex items-center gap-3 flex-wrap">
+    <div style={{
+      background: 'rgba(245,243,255,0.85)',
+      backdropFilter: 'blur(12px)',
+      borderBottom: '1px solid rgba(139,92,246,0.1)',
+      padding: '6px 16px',
+      position: 'relative',
+      zIndex: 40,          /* own stacking context so dropdowns (z:9999) float above page */
+    }}>
+      <div style={{ maxWidth: 1200, margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
 
-          {/* Location pin icon + current location display */}
+          {/* Location toggle */}
           <button
             onClick={() => setShowSearch(!showSearch)}
-            className="flex items-center gap-1.5 text-sm font-medium text-blue-700 hover:text-blue-900 min-w-0"
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: 'none', border: 'none', cursor: 'pointer',
+              fontSize: '0.82rem', fontWeight: 600, color: 'var(--accent)', fontFamily: 'inherit',
+              padding: '4px 0',
+            }}
           >
-            <svg className="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg style={{ width: 14, height: 14, flexShrink: 0 }} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
-            <span className="truncate max-w-xs">
+            <span style={{ maxWidth: 280, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {locationEnabled && location ? location.address : 'Set your location'}
             </span>
-            <svg className="w-3 h-3 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            <svg style={{ width: 11, height: 11, flexShrink: 0 }} fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+              <polyline points="6 9 12 15 18 9" />
             </svg>
           </button>
 
           {/* Radius picker */}
           {locationEnabled && (
-            <div className="relative">
+            <div style={{ position: 'relative' }}>
               <button
                 onClick={() => setShowRadiusPicker(!showRadiusPicker)}
-                className="text-xs bg-white border border-blue-200 text-blue-700 px-2 py-1 rounded-full hover:bg-blue-50"
+                style={{
+                  fontSize: '0.76rem', fontWeight: 600, padding: '3px 10px',
+                  background: 'var(--accent-100)', border: '1px solid rgba(124,58,237,0.2)',
+                  color: 'var(--accent)', borderRadius: 20, cursor: 'pointer', fontFamily: 'inherit',
+                }}
               >
                 within {radius} km ▾
               </button>
               {showRadiusPicker && (
-                <div className="absolute left-0 top-8 bg-white border rounded-lg shadow-lg p-2 z-50 w-44">
+                <div style={{
+                  position: 'absolute', left: 0, top: 'calc(100% + 4px)',
+                  background: 'rgba(255,255,255,0.98)', backdropFilter: 'blur(16px)',
+                  border: '1px solid var(--border)', borderRadius: 12,
+                  boxShadow: '0 20px 60px rgba(0,0,0,0.14)', padding: 6, zIndex: 9999, width: 180,
+                }}>
                   {[2, 5, 10, 20, 50].map(r => (
                     <button
                       key={r}
                       onClick={() => { updateRadius(r); setShowRadiusPicker(false); }}
-                      className={`block w-full text-left px-3 py-1.5 text-sm rounded hover:bg-gray-50 ${radius === r ? 'text-blue-600 font-medium' : 'text-gray-700'}`}
+                      style={{
+                        display: 'block', width: '100%', textAlign: 'left',
+                        padding: '8px 12px', borderRadius: 8, border: 'none',
+                        cursor: 'pointer', fontFamily: 'inherit', fontSize: '0.84rem',
+                        fontWeight: radius === r ? 700 : 500,
+                        color: radius === r ? 'var(--accent)' : 'var(--text-secondary)',
+                        background: radius === r ? 'var(--accent-glow)' : 'transparent',
+                      }}
+                      onMouseEnter={e => { if (radius !== r) e.currentTarget.style.background = 'rgba(124,58,237,0.04)'; }}
+                      onMouseLeave={e => { if (radius !== r) e.currentTarget.style.background = 'transparent'; }}
                     >
                       {r} km — {r === 2 ? 'Hyperlocal' : r === 5 ? 'Nearby' : r === 10 ? 'Local' : r === 20 ? 'City-wide' : 'Wide area'}
                     </button>
@@ -154,34 +189,37 @@ const LocationBar = () => {
             </div>
           )}
 
-          <div className="flex items-center gap-2 ml-auto">
-            {error && <span className="text-xs text-red-600">{error}</span>}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginLeft: 'auto' }}>
+            {error && <span style={{ fontSize: '0.76rem', color: 'var(--danger)' }}>{error}</span>}
             {locationEnabled && (
-              <button onClick={clearLocation} className="text-xs text-gray-400 hover:text-red-500">
+              <button onClick={clearLocation} style={{ fontSize: '0.76rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontFamily: 'inherit' }}>
                 Clear
               </button>
             )}
             <button
               onClick={detectLocation}
               disabled={loading}
-              className="text-xs bg-blue-600 text-white px-3 py-1 rounded-full hover:bg-blue-700 disabled:opacity-50 flex items-center gap-1"
+              style={{
+                display: 'flex', alignItems: 'center', gap: 5,
+                fontSize: '0.76rem', fontWeight: 600,
+                background: 'linear-gradient(135deg,var(--accent),#8b5cf6)',
+                color: 'white', border: 'none', padding: '5px 12px', borderRadius: 20,
+                cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.6 : 1,
+                boxShadow: '0 2px 8px rgba(124,58,237,0.2)', fontFamily: 'inherit',
+              }}
             >
               {loading
-                ? <><div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div> Detecting...</>
+                ? <><div className="spinner" style={{ width: 12, height: 12, borderWidth: 2 }} /> Detecting…</>
                 : '⊕ Use GPS'
               }
             </button>
           </div>
         </div>
 
-        {/* Expandable search box */}
         {showSearch && (
-          <div className="mt-2 pb-1">
-            <AddressSearch
-              onSelect={handleAddressSelect}
-              placeholder="Search city, area, or full address..."
-            />
-            <p className="text-xs text-gray-400 mt-1.5 ml-1">
+          <div style={{ marginTop: 8, paddingBottom: 4 }}>
+            <AddressSearch onSelect={handleAddressSelect} placeholder="Search city, area, or full address…" />
+            <p style={{ fontSize: '0.74rem', color: 'var(--muted)', marginTop: 6, marginLeft: 4 }}>
               Type any location — e.g. "Connaught Place Delhi" or "Bandra Mumbai"
             </p>
           </div>

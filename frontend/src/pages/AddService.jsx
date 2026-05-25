@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import api from '../services/api';
+import ImageUploader from '../components/ImageUploader';
 
 const CATEGORIES = [
   'plumbing','electrical','carpentry','painting','cleaning',
@@ -21,12 +23,13 @@ const AddService = () => {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const toast = useToast();
 
   const [form, setForm] = useState({
     title: '', description: '', category: '',
     pricingType: 'fixed', basePrice: '', priceUnit: 'per-visit',
     duration: { estimated: '', unit: 'hours' },
-    images: ['']
+    images: []
   });
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(isEdit);
@@ -46,7 +49,7 @@ const AddService = () => {
           title: s.title, description: s.description, category: s.category,
           pricingType: s.pricingType, basePrice: s.basePrice, priceUnit: s.priceUnit,
           duration: { estimated: s.duration?.estimated || '', unit: s.duration?.unit || 'hours' },
-          images: s.images?.length ? s.images : ['']
+          images: s.images || []
         });
       } catch {
         setError('Failed to load service');
@@ -67,17 +70,6 @@ const AddService = () => {
     }
   };
 
-  const handleImageChange = (index, value) => {
-    const imgs = [...form.images];
-    imgs[index] = value;
-    setForm(prev => ({ ...prev, images: imgs }));
-  };
-
-  const addImageField = () => setForm(prev => ({ ...prev, images: [...prev.images, ''] }));
-  const removeImageField = (i) => setForm(prev => ({ ...prev, images: prev.images.filter((_, idx) => idx !== i) }));
-
-  const [submitted, setSubmitted] = useState(false);
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -87,18 +79,20 @@ const AddService = () => {
         ...form,
         basePrice: parseFloat(form.basePrice),
         duration: { ...form.duration, estimated: parseInt(form.duration.estimated) },
-        images: form.images.filter(img => img.trim())
       };
       if (isEdit) {
         await api.put(`/services/${id}`, payload);
-        navigate('/services');
+        toast.success('Service updated successfully!');
       } else {
         await api.post('/services', payload);
-        setSubmitted(true);
+        toast.success('Service added successfully!');
       }
+      navigate('/dashboard');
     } catch (err) {
       const validationErrors = err.response?.data?.errors;
-      setError(validationErrors?.[0]?.msg || err.response?.data?.message || 'Failed to save service');
+      const msg = validationErrors?.[0]?.msg || err.response?.data?.message || 'Failed to save service';
+      setError(msg);
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -107,19 +101,6 @@ const AddService = () => {
   if (fetching) return (
     <div className="flex justify-center items-center h-64">
       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-    </div>
-  );
-
-  if (submitted) return (
-    <div className="container mx-auto px-4 py-16 max-w-lg text-center">
-      <div className="text-5xl mb-4">⏳</div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">Service Submitted for Review</h2>
-      <p className="text-gray-600 mb-6">Your service has been submitted and is pending admin approval. It will be visible to customers once approved.</p>
-      <div className="flex gap-3 justify-center">
-        <button onClick={() => { setSubmitted(false); setForm({ title: '', description: '', category: '', pricingType: 'fixed', basePrice: '', priceUnit: 'per-visit', duration: { estimated: '', unit: 'hours' }, images: [''] }); }}
-          className="bg-primary-600 text-white px-5 py-2 rounded-lg hover:bg-primary-700">Add Another</button>
-        <button onClick={() => navigate('/services')} className="border border-gray-300 px-5 py-2 rounded-lg hover:bg-gray-50">View My Services</button>
-      </div>
     </div>
   );
 
@@ -200,21 +181,12 @@ const AddService = () => {
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Service Images</label>
-          <p className="text-xs text-gray-500 mb-2">Enter image URLs (optional)</p>
-          {form.images.map((img, i) => (
-            <div key={i} className="flex gap-2 mb-2">
-              <input value={img} onChange={(e) => handleImageChange(i, e.target.value)}
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                placeholder="https://example.com/image.jpg" />
-              {form.images.length > 1 && (
-                <button type="button" onClick={() => removeImageField(i)}
-                  className="px-3 py-2 text-red-600 border border-red-300 rounded-md hover:bg-red-50">✕</button>
-              )}
-            </div>
-          ))}
-          <button type="button" onClick={addImageField}
-            className="text-sm text-primary-600 hover:text-primary-700">+ Add another image</button>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Service Images</label>
+          <ImageUploader
+            images={form.images}
+            onChange={(urls) => setForm(prev => ({ ...prev, images: urls }))}
+            max={4}
+          />
         </div>
 
         <div className="flex gap-3 pt-2">

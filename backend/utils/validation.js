@@ -44,7 +44,7 @@ const validateProduct = [
   body('price').isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('stock').isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
   body('unit').isIn(['piece', 'kg', 'gram', 'liter', 'ml', 'packet', 'box', 'dozen']).withMessage('Invalid unit'),
-  body('images').isArray({ min: 1 }).withMessage('At least one image is required')
+  body('images').optional().isArray().withMessage('Images must be an array of URLs')
 ];
 
 const validateProductUpdate = [
@@ -54,7 +54,7 @@ const validateProductUpdate = [
   body('price').optional().isFloat({ min: 0 }).withMessage('Price must be a positive number'),
   body('stock').optional().isInt({ min: 0 }).withMessage('Stock must be a non-negative integer'),
   body('unit').optional().isIn(['piece', 'kg', 'gram', 'liter', 'ml', 'packet', 'box', 'dozen']).withMessage('Invalid unit'),
-  body('images').optional().isArray({ min: 1 }).withMessage('At least one image is required')
+  body('images').optional().isArray().withMessage('Images must be an array of URLs')
 ];
 
 const validateService = [

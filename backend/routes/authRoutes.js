@@ -1,23 +1,18 @@
 const express = require('express');
 const {
-  register,
-  login,
-  getProfile,
-  updateProfile,
-  changePassword
+  register, login, getProfile, updateProfile, changePassword,
+  verifyOtp, resendOtp,
 } = require('../controllers/authController');
 const { authenticate, authorize } = require('../middleware/auth');
-const {
-  validateRegister,
-  validateLogin,
-  validateChangePassword
-} = require('../utils/validation');
+const { validateRegister, validateLogin, validateChangePassword } = require('../utils/validation');
 const VendorProfile = require('../models/VendorProfile');
 
 const router = express.Router();
 
 router.post('/register', validateRegister, register);
 router.post('/login', validateLogin, login);
+router.post('/verify-otp', verifyOtp);
+router.post('/resend-otp', resendOtp);
 router.get('/profile', authenticate, getProfile);
 router.put('/profile', authenticate, updateProfile);
 router.put('/change-password', authenticate, validateChangePassword, changePassword);

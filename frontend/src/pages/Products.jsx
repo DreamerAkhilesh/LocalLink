@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../context/CartContext';
 import { useLocation } from '../context/LocationContext';
 import api from '../services/api';
+import NoImagePlaceholder from '../components/NoImagePlaceholder';
 
 /**
  * Add to Cart Button Component
@@ -82,15 +83,13 @@ const Products = () => {
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filters, setFilters] = useState({
-    search: '',
-    category: '',
-    minPrice: '',
-    maxPrice: '',
-    sortBy: 'createdAt',
-    sortOrder: 'desc'
-  });
+  const initialFilters = { search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' };
+  const [filters, setFilters] = useState(initialFilters);           // drives UI inputs
+  const [debouncedFilters, setDebouncedFilters] = useState(initialFilters); // drives API
+  const debounceRef = useRef(null);
   const [pagination, setPagination] = useState({ current: 1, pages: 1, total: 0 });
+  const [locationMeta, setLocationMeta] = useState({ filtered: false, fallback: false, radiusKm: null });
+  const [useNearMe, setUseNearMe] = useState(true); // page-level toggle for location filter
 
   const categories = [
     'groceries','vegetables','fruits','dairy','bakery',
@@ -107,31 +106,35 @@ const Products = () => {
       let response;
       if (isVendor) {
         const params = new URLSearchParams({ page: page.toString(), limit: '12' });
-        if (filters.search) params.set('search', filters.search);
-        if (filters.category) params.set('category', filters.category);
+        if (debouncedFilters.search) params.set('search', debouncedFilters.search);
+        if (debouncedFilters.category) params.set('category', debouncedFilters.category);
         response = await api.get(`/products/vendor/my-products?${params}`);
       } else {
         const params = new URLSearchParams({ page: page.toString(), limit: '12' });
-        if (filters.search) params.set('search', filters.search);
-        if (filters.category) params.set('category', filters.category);
-        if (filters.minPrice) params.set('minPrice', filters.minPrice);
-        if (filters.maxPrice) params.set('maxPrice', filters.maxPrice);
-        if (filters.sortBy) params.set('sortBy', filters.sortBy);
-        if (filters.sortOrder) params.set('sortOrder', filters.sortOrder);
-        // Append location params for radius filtering
-        const locParams = getLocationParams();
-        if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        if (debouncedFilters.search) params.set('search', debouncedFilters.search);
+        if (debouncedFilters.category) params.set('category', debouncedFilters.category);
+        if (debouncedFilters.minPrice) params.set('minPrice', debouncedFilters.minPrice);
+        if (debouncedFilters.maxPrice) params.set('maxPrice', debouncedFilters.maxPrice);
+        if (debouncedFilters.sortBy) params.set('sortBy', debouncedFilters.sortBy);
+        if (debouncedFilters.sortOrder) params.set('sortOrder', debouncedFilters.sortOrder);
+        // Only attach location params when "Near me" is active
+        if (useNearMe) {
+          const locParams = getLocationParams();
+          if (locParams.lat) { params.set('lat', locParams.lat); params.set('lng', locParams.lng); params.set('radius', locParams.radius); }
+        }
         response = await api.get(`/products?${params}`);
       }
-      setProducts(response.data.data.products);
-      setPagination(response.data.data.pagination);
+      const d = response.data.data;
+      setProducts(d.products);
+      setPagination(d.pagination);
+      setLocationMeta({ filtered: !!d.locationFiltered, fallback: !!d.locationFallback, radiusKm: d.radiusKm });
       setError('');
     } catch (err) {
-      setError('Failed to fetch products');
+      setError('Failed to load products. Please try again.');
     } finally {
       setLoading(false);
     }
-  }, [filters, isVendor, getLocationParams]);
+  }, [debouncedFilters, isVendor, getLocationParams, useNearMe]);
 
   useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -145,10 +148,30 @@ const Products = () => {
     }
   };
 
-  const handleFilterChange = (key, value) => setFilters(prev => ({ ...prev, [key]: value }));
-  const handleFilterChangeBatch = (updates) => setFilters(prev => ({ ...prev, ...updates }));
+  // Text inputs (search, price): debounce 600ms so the API isn't hit on every keystroke.
+  // Dropdowns (category, sort): apply immediately.
+  const TEXT_KEYS = ['search', 'minPrice', 'maxPrice'];
+  const handleFilterChange = (key, value) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
+    if (TEXT_KEYS.includes(key)) {
+      clearTimeout(debounceRef.current);
+      debounceRef.current = setTimeout(() => {
+        setDebouncedFilters(prev => ({ ...prev, [key]: value }));
+      }, 600);
+    } else {
+      setDebouncedFilters(prev => ({ ...prev, [key]: value }));
+    }
+  };
+  const handleFilterChangeBatch = (updates) => {
+    setFilters(prev => ({ ...prev, ...updates }));
+    setDebouncedFilters(prev => ({ ...prev, ...updates })); // sort is always immediate
+  };
   const handleSearch = (e) => { e.preventDefault(); };
-  const clearFilters = () => setFilters({ search: '', category: '', minPrice: '', maxPrice: '', sortBy: 'createdAt', sortOrder: 'desc' });
+  const clearFilters = () => {
+    clearTimeout(debounceRef.current);
+    setFilters(initialFilters);
+    setDebouncedFilters(initialFilters);
+  };
 
   const formatPrice = (price) => new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR' }).format(price);
 
@@ -165,25 +188,87 @@ const Products = () => {
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
-      <div className="mb-8 flex items-center justify-between">
+      <div className="mb-6 flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">
-            {isVendor ? 'My Products' : 'Local Products'}
+          <h1 className="text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>
+            {isVendor ? 'My Products' : 'Browse Products'}
           </h1>
-          <p className="text-gray-600">
+          <p style={{ color: 'var(--muted)', fontSize: '0.9rem' }}>
             {isVendor
               ? 'Manage your product listings'
-              : locationEnabled
-                ? `Showing products within ${radius} km of your location`
-                : 'Discover products from local vendors in your area'}
+              : 'Products from local vendors across all categories'}
           </p>
         </div>
-        {isVendor && (
-          <Link to="/products/new" className="bg-primary-600 text-white px-4 py-2 rounded-md hover:bg-primary-700 transition-colors text-sm font-medium">
-            + Add Product
-          </Link>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Near-me toggle (customers only) */}
+          {!isVendor && locationEnabled && (
+            <button
+              onClick={() => setUseNearMe(v => !v)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '7px 14px', borderRadius: 20, fontSize: '0.82rem', fontWeight: 600,
+                border: '1.5px solid', cursor: 'pointer', transition: 'all 0.18s', fontFamily: 'inherit',
+                background: useNearMe ? 'var(--accent)' : 'transparent',
+                color: useNearMe ? 'white' : 'var(--accent)',
+                borderColor: 'var(--accent)',
+                boxShadow: useNearMe ? '0 2px 10px rgba(124,58,237,0.25)' : 'none',
+              }}
+            >
+              📍 {useNearMe ? `Within ${radius} km` : 'Show all'}
+            </button>
+          )}
+          {isVendor && (
+            <Link to="/products/new" className="btn-primary" style={{ padding: '8px 18px', fontSize: '0.86rem' }}>
+              + Add Product
+            </Link>
+          )}
+        </div>
       </div>
+
+      {/* Location status banner */}
+      {!isVendor && (
+        <>
+          {locationMeta.filtered && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(124,58,237,0.06)', border: '1px solid rgba(124,58,237,0.15)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: 'var(--accent)',
+            }}>
+              <span style={{ fontSize: '1rem' }}>📍</span>
+              <span>Showing products from vendors within <strong>{locationMeta.radiusKm} km</strong> of your set location.</span>
+              <button onClick={() => setUseNearMe(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)', fontWeight: 600, fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                Show all instead →
+              </button>
+            </div>
+          )}
+          {locationMeta.fallback && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: '#92400e',
+            }}>
+              <span style={{ fontSize: '1rem' }}>⚠️</span>
+              <span>No vendors found within <strong>{locationMeta.radiusKm} km</strong> of your location — showing <strong>all available products</strong> instead.</span>
+              <button onClick={() => setUseNearMe(false)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontWeight: 600, fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                Keep showing all →
+              </button>
+            </div>
+          )}
+          {!locationEnabled && !locationMeta.filtered && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 10,
+              background: 'rgba(124,58,237,0.04)', border: '1px solid var(--border)',
+              borderRadius: 12, padding: '10px 16px', marginBottom: 20,
+              fontSize: '0.84rem', color: 'var(--muted)',
+            }}>
+              <span>🌐</span>
+              <span>Showing all products. <strong>Set your location</strong> in the bar above to see what's near you.</span>
+            </div>
+          )}
+        </>
+      )}
 
       {/* Filters */}
       <div className="bg-white rounded-lg shadow-sm border p-6 mb-8">
@@ -301,13 +386,10 @@ const Products = () => {
                       src={product.images[0]}
                       alt={product.name}
                       className="h-48 w-full object-cover object-center"
+                      onError={e => { e.target.style.display = 'none'; e.target.nextSibling && (e.target.nextSibling.style.display = 'flex'); }}
                     />
                   ) : (
-                    <div className="h-48 w-full bg-gray-200 flex items-center justify-center">
-                      <svg className="h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
+                    <NoImagePlaceholder category={product.category} name={product.name} height="192px" />
                   )}
                 </div>
 

@@ -100,5 +100,15 @@ Thumbs.db
 *.sqlite
 *.db
 
-# Uploads
+# Uploads (user-generated files — not committed)
 uploads/
+backend/uploads/
+
+# Claude Code AI assistant memory & project files
+.claude/
+
+# Demo / scratch directories — not part of the project
+frontend-demo/
+
+# Local env overrides
+.env.local.override

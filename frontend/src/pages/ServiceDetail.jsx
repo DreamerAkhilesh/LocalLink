@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import ServiceBookingModal from '../components/ServiceBookingModal';
+import NoImagePlaceholder from '../components/NoImagePlaceholder';
 
 const ServiceDetail = () => {
   const { id } = useParams();
@@ -107,11 +108,7 @@ const ServiceDetail = () => {
                   onError={(e) => { e.target.style.display = 'none'; }}
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <svg className="w-20 h-20 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m8 0V6a2 2 0 012 2v6M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M8 6v10a2 2 0 002 2h4a2 2 0 002-2V6" />
-                  </svg>
-                </div>
+                <NoImagePlaceholder category={service.category} name={service.title} height="100%" />
               )}
             </div>
             {service.images?.length > 1 && (

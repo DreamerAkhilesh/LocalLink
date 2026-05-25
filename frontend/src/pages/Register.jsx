@@ -1,108 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import LocationPicker from '../components/LocationPicker';
 
-/**
- * Register Page Component
- * User registration form with role selection
- */
+const SHOP_CATEGORIES = ['grocery', 'clothing', 'electronics', 'pharmacy', 'stationery', 'bakery', 'other-shop'];
+const SERVICE_CATEGORIES = ['plumber', 'electrician', 'carpenter', 'painter', 'cleaner', 'mechanic', 'tutor', 'other-service'];
+
 const Register = () => {
   const { register, isAuthenticated, loading, error, clearError } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  
+
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: '',
+    name: '', email: '', password: '', confirmPassword: '', phone: '',
     role: searchParams.get('role') || 'customer',
-    address: {
-      street: '',
-      city: '',
-      pincode: '',
-      state: ''
-    },
-    businessInfo: {
-      businessName: '',
-      businessType: 'shop',
-      category: '',
-      description: ''
-    },
-    riderInfo: {
-      vehicleType: 'bike',
-      vehicleNumber: ''
-    }
+    address: { street: '', city: '', pincode: '', state: '' },
+    businessInfo: { businessName: '', businessType: 'shop', category: '', description: '' },
+    riderInfo: { vehicleType: 'bike', vehicleNumber: '' }
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [passwordError, setPasswordError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [locationData, setLocationData] = useState(null);
   const [showLocationPicker, setShowLocationPicker] = useState(false);
-  
-  // Redirect if already authenticated
-  useEffect(() => {
-    if (isAuthenticated) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [isAuthenticated, navigate]);
-  
-  // Clear errors when component mounts
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-  
+
+  useEffect(() => { if (isAuthenticated) navigate('/dashboard', { replace: true }); }, [isAuthenticated, navigate]);
+  useEffect(() => { clearError(); }, [clearError]);
+
   const handleChange = (e) => {
     const { name, value } = e.target;
-    
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
-      setFormData(prev => ({
-        ...prev,
-        [parent]: {
-          ...prev[parent],
-          [child]: value
-        }
-      }));
+      setFormData(prev => ({ ...prev, [parent]: { ...prev[parent], [child]: value } }));
     } else {
-      setFormData(prev => ({
-        ...prev,
-        [name]: value
-      }));
+      setFormData(prev => ({ ...prev, [name]: value }));
     }
-    
-    // Clear password error when user types
-    if (name === 'password' || name === 'confirmPassword') {
-      setPasswordError('');
-    }
+    if (name === 'password' || name === 'confirmPassword') setPasswordError('');
   };
-  
-  const validateForm = () => {
-    if (formData.password !== formData.confirmPassword) {
-      setPasswordError('Passwords do not match');
-      return false;
-    }
-    
-    if (formData.password.length < 6) {
-      setPasswordError('Password must be at least 6 characters long');
-      return false;
-    }
-    
-    return true;
-  };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
+    if (formData.password !== formData.confirmPassword) { setPasswordError('Passwords do not match'); return; }
+    if (formData.password.length < 6) { setPasswordError('Password must be at least 6 characters'); return; }
     setIsSubmitting(true);
-    
     try {
-      const registrationData = {
+      const data = {
         name: formData.name,
         email: formData.email,
         password: formData.password,
@@ -110,411 +54,194 @@ const Register = () => {
         role: formData.role,
         address: formData.address
       };
-      
-      // Add business info for vendors
-      if (formData.role === 'vendor') {
-        registrationData.businessInfo = formData.businessInfo;
-      }
+      if (formData.role === 'vendor') data.businessInfo = formData.businessInfo;
+      if (formData.role === 'rider') data.riderInfo = formData.riderInfo;
 
-      // Add rider info for riders
-      if (formData.role === 'rider') {
-        registrationData.riderInfo = formData.riderInfo;
-      }
-      
-      const result = await register(registrationData);
-      if (result?.success === false) return;
+      const result = await register(data);
 
-      // Save vendor location after registration if provided
-      if (formData.role === 'vendor' && locationData) {
-        try {
-          const api = (await import('../services/api')).default;
-          await api.put('/auth/vendor/location', {
-            lat: locationData.lat,
-            lng: locationData.lng,
-            address: locationData.address
-          });
-        } catch { /* non-critical, vendor can set it from profile */ }
-      }
-
-      // Redirect based on role
-      if (formData.role === 'rider') {
-        navigate('/rider');
-      } else {
-        navigate('/dashboard');
+      if (result.success && result.requiresOtp) {
+        // Save vendor location after registration if provided (non-critical)
+        if (formData.role === 'vendor' && locationData) {
+          try {
+            const api = (await import('../services/api')).default;
+            await api.put('/auth/vendor/location', {
+              lat: locationData.lat,
+              lng: locationData.lng,
+              address: locationData.address
+            });
+          } catch { /* non-critical, vendor can set it from profile */ }
+        }
+        toast.info(`Verification code sent to ${result.email}`);
+        navigate(`/verify-otp?email=${encodeURIComponent(result.email)}`);
+      } else if (!result.success) {
+        toast.error(result.error || 'Registration failed');
       }
     } catch (err) {
-      console.error('Registration error:', err);
+      toast.error('Something went wrong. Please try again.');
     } finally {
       setIsSubmitting(false);
     }
   };
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-  
+
+  if (loading) return (
+    <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="spinner" />
+    </div>
+  );
+
+  const inputStyle = { width: '100%' };
+  const labelStyle = { display: 'block', fontWeight: 600, marginBottom: 6, fontSize: '0.86rem', color: 'var(--text)' };
+  const sectionTitle = { fontSize: '1rem', fontWeight: 700, color: 'var(--text)', margin: '8px 0 16px', paddingBottom: 8, borderBottom: '1px solid var(--border)' };
+
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-          Create your account
-        </h2>
-        <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link to="/login" className="font-medium text-primary-600 hover:text-primary-500">
-            sign in to your existing account
-          </Link>
-        </p>
+    <div style={{ minHeight: '88vh', padding: '36px 16px 48px', position: 'relative', zIndex: 1 }}>
+      {/* BG blobs */}
+      <div style={{ position: 'fixed', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ position: 'absolute', width: 500, height: 500, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.07),transparent 70%)', top: '-10%', right: '-5%' }} />
+        <div style={{ position: 'absolute', width: 350, height: 350, borderRadius: '50%', background: 'radial-gradient(circle,rgba(139,92,246,0.05),transparent 70%)', bottom: '5%', left: '-5%' }} />
       </div>
-      
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            {/* Role Selection */}
+
+      <div style={{ width: '100%', maxWidth: 520, margin: '0 auto', position: 'relative', zIndex: 1 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 26 }}>
+          <Link to="/" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <div style={{ width: 48, height: 48, borderRadius: 13, background: 'linear-gradient(135deg,#7c3aed,#a78bfa)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white', fontWeight: 800, fontSize: '1rem', boxShadow: '0 8px 24px rgba(124,58,237,0.3)' }}>LL</div>
+            <span style={{ fontWeight: 800, fontSize: '1.25rem', color: 'var(--text)', letterSpacing: '-0.02em' }}>Create your account</span>
+          </Link>
+          <p style={{ color: 'var(--muted)', fontSize: '0.88rem', marginTop: 6 }}>
+            Already have one?{' '}
+            <Link to="/login" style={{ color: 'var(--accent)', fontWeight: 700, textDecoration: 'none' }}>Sign in →</Link>
+          </p>
+        </div>
+
+        <div className="glass-form" style={{ padding: 28 }}>
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+            {/* Role selector */}
             <div>
-              <label className="block text-sm font-medium text-gray-700">
-                Account Type
-              </label>
-              <div className="mt-1 grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, role: 'customer' }))}
-                  className={`${
-                    formData.role === 'customer'
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-700 border-gray-300'
-                  } border rounded-md py-2 px-3 text-sm font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                >
-                  Customer
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, role: 'vendor' }))}
-                  className={`${
-                    formData.role === 'vendor'
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-700 border-gray-300'
-                  } border rounded-md py-2 px-3 text-sm font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                >
-                  Vendor
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFormData(prev => ({ ...prev, role: 'rider' }))}
-                  className={`${
-                    formData.role === 'rider'
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-white text-gray-700 border-gray-300'
-                  } border rounded-md py-2 px-3 text-sm font-medium hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500`}
-                >
-                  🛵 Rider
-                </button>
+              <label style={labelStyle}>Account Type</label>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                {[
+                  { role: 'customer', label: '🛒 Customer' },
+                  { role: 'vendor', label: '🏪 Vendor' },
+                  { role: 'rider', label: '🛵 Rider' },
+                ].map(({ role, label }) => (
+                  <button
+                    key={role}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, role }))}
+                    style={{
+                      padding: '11px', borderRadius: 10, fontWeight: 700, fontSize: '0.9rem',
+                      cursor: 'pointer', border: '2px solid', transition: 'all 0.18s', fontFamily: 'inherit',
+                      background: formData.role === role ? 'linear-gradient(135deg,var(--accent),#8b5cf6)' : 'rgba(255,255,255,0.6)',
+                      color: formData.role === role ? 'white' : 'var(--text-secondary)',
+                      borderColor: formData.role === role ? 'var(--accent)' : 'var(--border)',
+                      boxShadow: formData.role === role ? '0 2px 12px rgba(124,58,237,0.22)' : 'none',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
-            
-            {/* Basic Information */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700">
-                Full Name
-              </label>
-              <div className="mt-1">
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email Address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-gray-700">
-                Phone Number
-              </label>
-              <div className="mt-1">
-                <input
-                  id="phone"
-                  name="phone"
-                  type="tel"
-                  required
-                  maxLength={10}
-                  value={formData.phone}
-                  onChange={handleChange}
-                  placeholder="10-digit mobile number"
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-            </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              <p className="mt-1 text-xs text-gray-500">Min 6 characters with uppercase, lowercase, and a number</p>
-            </div>
-            
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                />
-              </div>
-              {passwordError && (
-                <p className="mt-1 text-sm text-red-600">{passwordError}</p>
-              )}
-            </div>
-            
-            {/* Address Information */}
-            <div className="space-y-4">
-              <h3 className="text-lg font-medium text-gray-900">Address Information</h3>
-              
+
+            {/* Basic info */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label htmlFor="address.street" className="block text-sm font-medium text-gray-700">
-                  Street Address
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="address.street"
-                    name="address.street"
-                    type="text"
-                    required
-                    value={formData.address.street}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
+                <label style={labelStyle}>Full Name</label>
+                <input name="name" type="text" required placeholder="Your full name" className="input-field" style={inputStyle} value={formData.name} onChange={handleChange} />
               </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="address.city" className="block text-sm font-medium text-gray-700">
-                    City
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="address.city"
-                      name="address.city"
-                      type="text"
-                      required
-                      value={formData.address.city}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="address.pincode" className="block text-sm font-medium text-gray-700">
-                    Pincode
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="address.pincode"
-                      name="address.pincode"
-                      type="text"
-                      required
-                      maxLength={6}
-                      value={formData.address.pincode}
-                      onChange={handleChange}
-                      placeholder="6-digit pincode"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-              </div>
-              
               <div>
-                <label htmlFor="address.state" className="block text-sm font-medium text-gray-700">
-                  State
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="address.state"
-                    name="address.state"
-                    type="text"
-                    required
-                    value={formData.address.state}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
+                <label style={labelStyle}>Phone</label>
+                <input name="phone" type="tel" required maxLength={10} placeholder="10-digit number" className="input-field" style={inputStyle} value={formData.phone} onChange={handleChange} />
+              </div>
+            </div>
+
+            <div>
+              <label style={labelStyle}>Email Address</label>
+              <input name="email" type="email" required placeholder="you@example.com" className="input-field" style={inputStyle} value={formData.email} onChange={handleChange} />
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div>
+                <label style={labelStyle}>Password</label>
+                <div style={{ position: 'relative' }}>
+                  <input name="password" type={showPassword ? 'text' : 'password'} required placeholder="Min 6 characters" className="input-field" style={{ ...inputStyle, paddingRight: 42 }} value={formData.password} onChange={handleChange} />
+                  <button type="button" onClick={() => setShowPassword(v => !v)} style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)' }}>
+                    <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                      {showPassword ? <><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></> : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>}
+                    </svg>
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label style={labelStyle}>Confirm Password</label>
+                <input name="confirmPassword" type={showPassword ? 'text' : 'password'} required placeholder="Repeat password" className="input-field" style={inputStyle} value={formData.confirmPassword} onChange={handleChange} />
+                {passwordError && <p style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: 4 }}>{passwordError}</p>}
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <p style={sectionTitle}>📍 Address</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <input name="address.street" type="text" required placeholder="Street address" className="input-field" style={inputStyle} value={formData.address.street} onChange={handleChange} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+                  <input name="address.city" type="text" required placeholder="City" className="input-field" value={formData.address.city} onChange={handleChange} />
+                  <input name="address.pincode" type="text" required maxLength={6} placeholder="Pincode" className="input-field" value={formData.address.pincode} onChange={handleChange} />
+                  <input name="address.state" type="text" required placeholder="State" className="input-field" value={formData.address.state} onChange={handleChange} />
                 </div>
               </div>
             </div>
-            
-            {/* Business Information (Vendor Only) */}
+
+            {/* Vendor info */}
             {formData.role === 'vendor' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Business Information</h3>
-                
-                <div>
-                  <label htmlFor="businessInfo.businessName" className="block text-sm font-medium text-gray-700">
-                    Business Name
-                  </label>
-                  <div className="mt-1">
-                    <input
-                      id="businessInfo.businessName"
-                      name="businessInfo.businessName"
-                      type="text"
-                      required
-                      value={formData.businessInfo.businessName}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="businessInfo.businessType" className="block text-sm font-medium text-gray-700">
-                    Business Type
-                  </label>
-                  <div className="mt-1">
-                    <select
-                      id="businessInfo.businessType"
-                      name="businessInfo.businessType"
-                      value={formData.businessInfo.businessType}
-                      onChange={(e) => {
-                        handleChange(e);
-                        // Reset category when business type changes
-                        setFormData(prev => ({
-                          ...prev,
-                          businessInfo: { ...prev.businessInfo, businessType: e.target.value, category: '' }
-                        }));
-                      }}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    >
+              <div>
+                <p style={sectionTitle}>🏪 Business Info</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <input name="businessInfo.businessName" type="text" required placeholder="Business name" className="input-field" style={inputStyle} value={formData.businessInfo.businessName} onChange={handleChange} />
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                    <select name="businessInfo.businessType" className="input-field" value={formData.businessInfo.businessType}
+                      onChange={e => { handleChange(e); setFormData(prev => ({ ...prev, businessInfo: { ...prev.businessInfo, businessType: e.target.value, category: '' } })); }}>
                       <option value="shop">Shop</option>
                       <option value="service">Service</option>
                     </select>
-                  </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="businessInfo.category" className="block text-sm font-medium text-gray-700">
-                    Category
-                  </label>
-                  <div className="mt-1">
-                    <select
-                      id="businessInfo.category"
-                      name="businessInfo.category"
-                      required
-                      value={formData.businessInfo.category}
-                      onChange={handleChange}
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    >
-                      <option value="">Select a category</option>
-                      {formData.businessInfo.businessType === 'shop' ? (
-                        <>
-                          <option value="grocery">Grocery</option>
-                          <option value="clothing">Clothing</option>
-                          <option value="electronics">Electronics</option>
-                          <option value="pharmacy">Pharmacy</option>
-                          <option value="stationery">Stationery</option>
-                          <option value="bakery">Bakery</option>
-                          <option value="other-shop">Other Shop</option>
-                        </>
-                      ) : (
-                        <>
-                          <option value="plumber">Plumber</option>
-                          <option value="electrician">Electrician</option>
-                          <option value="carpenter">Carpenter</option>
-                          <option value="painter">Painter</option>
-                          <option value="cleaner">Cleaner</option>
-                          <option value="mechanic">Mechanic</option>
-                          <option value="tutor">Tutor</option>
-                          <option value="other-service">Other Service</option>
-                        </>
-                      )}
+                    <select name="businessInfo.category" required className="input-field" value={formData.businessInfo.category} onChange={handleChange}>
+                      <option value="">Select category</option>
+                      {(formData.businessInfo.businessType === 'shop' ? SHOP_CATEGORIES : SERVICE_CATEGORIES).map(c => (
+                        <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1).replace('-', ' ')}</option>
+                      ))}
                     </select>
                   </div>
-                </div>
-                
-                <div>
-                  <label htmlFor="businessInfo.description" className="block text-sm font-medium text-gray-700">
-                    Business Description
-                  </label>
-                  <div className="mt-1">
-                    <textarea
-                      id="businessInfo.description"
-                      name="businessInfo.description"
-                      rows={3}
-                      value={formData.businessInfo.description}
-                      onChange={handleChange}
-                      placeholder="Brief description of your business"
-                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                    />
-                  </div>
+                  <textarea name="businessInfo.description" rows={3} placeholder="Brief description of your business (optional)" className="input-field" style={{ resize: 'vertical', minHeight: 80 }} value={formData.businessInfo.description} onChange={handleChange} />
                 </div>
 
                 {/* Business Location */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Business Location <span className="text-gray-400 font-normal">(recommended)</span>
+                <div style={{ marginTop: 12 }}>
+                  <label style={labelStyle}>
+                    Business Location <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(recommended)</span>
                   </label>
-                  <p className="text-xs text-gray-500 mb-2">
+                  <p style={{ fontSize: '0.8rem', color: 'var(--muted)', marginBottom: 8 }}>
                     Helps customers nearby discover your business. You can also set this later from your profile.
                   </p>
                   {locationData ? (
-                    <div className="flex items-start gap-2 bg-green-50 border border-green-200 rounded-lg p-3 mb-2">
-                      <span className="text-green-600">📌</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-green-800 truncate">{locationData.address}</p>
-                        <p className="text-xs text-green-600">{locationData.lat.toFixed(5)}, {locationData.lng.toFixed(5)}</p>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8, background: 'rgba(5,150,105,0.08)', border: '1px solid rgba(5,150,105,0.2)', borderRadius: 10, padding: 12, marginBottom: 8 }}>
+                      <span style={{ color: '#059669' }}>📌</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <p style={{ fontSize: '0.86rem', fontWeight: 600, color: '#065f46', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', margin: 0 }}>{locationData.address}</p>
+                        <p style={{ fontSize: '0.76rem', color: '#059669', margin: 0 }}>{locationData.lat.toFixed(5)}, {locationData.lng.toFixed(5)}</p>
                       </div>
-                      <button type="button" onClick={() => setLocationData(null)} className="text-gray-400 hover:text-red-500 text-lg leading-none">&times;</button>
+                      <button type="button" onClick={() => setLocationData(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', fontSize: '1.2rem', lineHeight: 1 }}>&times;</button>
                     </div>
                   ) : (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
-                      <p className="text-xs text-yellow-700">No location set. Customers won't find you in location-based searches.</p>
+                    <div style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.2)', borderRadius: 10, padding: 10, marginBottom: 8 }}>
+                      <p style={{ fontSize: '0.8rem', color: '#92400e', margin: 0 }}>No location set. Customers won't find you in location-based searches.</p>
                     </div>
                   )}
                   <button
                     type="button"
                     onClick={() => setShowLocationPicker(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium"
+                    style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, padding: '8px 16px', fontSize: '0.86rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                   >
                     🗺️ {locationData ? 'Change Location' : 'Set Business Location'}
                   </button>
@@ -534,60 +261,57 @@ const Register = () => {
 
             {/* Rider Information */}
             {formData.role === 'rider' && (
-              <div className="space-y-4">
-                <h3 className="text-lg font-medium text-gray-900">Rider Information</h3>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Vehicle Type</label>
-                  <select
-                    name="riderInfo.vehicleType"
-                    value={formData.riderInfo.vehicleType}
-                    onChange={handleChange}
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  >
-                    <option value="bike">Bike</option>
-                    <option value="scooter">Scooter</option>
-                    <option value="cycle">Cycle</option>
-                    <option value="car">Car</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Vehicle Number <span className="text-gray-400 font-normal">(optional)</span>
-                  </label>
-                  <input
-                    type="text"
-                    name="riderInfo.vehicleNumber"
-                    value={formData.riderInfo.vehicleNumber}
-                    onChange={handleChange}
-                    placeholder="e.g. UP32 AB 1234"
-                    className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-primary-500 focus:border-primary-500"
-                  />
-                </div>
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-700">
-                    ℹ️ Your account will be reviewed by admin before you can start accepting deliveries.
-                  </p>
+              <div>
+                <p style={sectionTitle}>🛵 Rider Information</p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div>
+                    <label style={labelStyle}>Vehicle Type</label>
+                    <select
+                      name="riderInfo.vehicleType"
+                      value={formData.riderInfo.vehicleType}
+                      onChange={handleChange}
+                      className="input-field"
+                      style={inputStyle}
+                    >
+                      <option value="bike">Bike</option>
+                      <option value="scooter">Scooter</option>
+                      <option value="cycle">Cycle</option>
+                      <option value="car">Car</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>
+                      Vehicle Number <span style={{ color: 'var(--muted)', fontWeight: 400 }}>(optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="riderInfo.vehicleNumber"
+                      value={formData.riderInfo.vehicleNumber}
+                      onChange={handleChange}
+                      placeholder="e.g. UP32 AB 1234"
+                      className="input-field"
+                      style={inputStyle}
+                    />
+                  </div>
+                  <div style={{ background: 'rgba(37,99,235,0.08)', border: '1px solid rgba(37,99,235,0.2)', borderRadius: 10, padding: 12 }}>
+                    <p style={{ fontSize: '0.86rem', color: '#1e40af', margin: 0 }}>
+                      ℹ️ Your account will be reviewed by admin before you can start accepting deliveries.
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
 
-            {/* Error Display */}
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md">
-                {error}
-              </div>
-            )}
-            
-            {/* Submit Button */}
-            <div>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? 'Creating Account...' : 'Create Account'}
-              </button>
-            </div>
+            {error && <div className="alert-error">{error}</div>}
+
+            <button type="submit" disabled={isSubmitting} className="btn-primary" style={{ width: '100%', padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}>
+              {isSubmitting ? (
+                <>
+                  <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                  Creating Account…
+                </>
+              ) : 'Create Account →'}
+            </button>
           </form>
         </div>
       </div>

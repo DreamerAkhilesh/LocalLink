@@ -1,185 +1,189 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 
-/**
- * Login Page Component
- * User authentication form
- */
 const Login = () => {
   const { login, isAuthenticated, user, loading, error, clearError } = useAuth();
+  const toast = useToast();
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  
-  // Redirect if already authenticated
+  const [showPassword, setShowPassword] = useState(false);
+
   useEffect(() => {
     if (isAuthenticated) {
-      const defaultPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+      const defaultPath = user?.role === 'admin' ? '/admin' : user?.role === 'rider' ? '/rider' : '/dashboard';
       const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, user, navigate, location]);
-  
-  // Clear errors when component mounts
-  useEffect(() => {
-    clearError();
-  }, [clearError]);
-  
+
+  useEffect(() => { clearError(); }, [clearError]);
+
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
-  
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    
     const result = await login(formData);
-    
+    setIsSubmitting(false);
     if (result.success) {
-      // Redirect admin to admin dashboard, others to their dashboard
-      const defaultPath = result.role === 'admin' ? '/admin' : '/dashboard';
+      toast.success('Welcome back! 👋');
+      const defaultPath = result.role === 'admin' ? '/admin' : result.role === 'rider' ? '/rider' : '/dashboard';
       const from = location.state?.from?.pathname || defaultPath;
       navigate(from, { replace: true });
+    } else if (result.error) {
+      // If account needs OTP verification, redirect to verify page
+      const resp = result.rawResponse;
+      if (resp?.requiresOtp) {
+        toast.warning('Please verify your email first.');
+        navigate(`/verify-otp?email=${encodeURIComponent(formData.email)}`);
+      } else {
+        toast.error(result.error);
+      }
     }
-    
-    setIsSubmitting(false);
   };
-  
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-      </div>
-    );
-  }
-  
+
+  if (loading) return (
+    <div style={{ minHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="spinner" />
+    </div>
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <div className="flex justify-center">
-            <div className="w-12 h-12 bg-primary-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-xl">L</span>
-            </div>
-          </div>
-          <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Sign in to your account
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-              create a new account
-            </Link>
-          </p>
+    <div style={{
+      minHeight: '88vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '32px 16px', position: 'relative', zIndex: 1,
+    }}>
+      {/* Background blobs */}
+      <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none', zIndex: 0 }}>
+        <div style={{ position: 'absolute', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle,rgba(124,58,237,0.08),transparent 70%)', top: '10%', left: '10%' }} />
+        <div style={{ position: 'absolute', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle,rgba(139,92,246,0.06),transparent 70%)', bottom: '10%', right: '10%' }} />
+      </div>
+
+      <div style={{ width: '100%', maxWidth: 440, position: 'relative', zIndex: 1 }}>
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 28 }}>
+          <Link to="/" style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+            <div style={{
+              width: 52, height: 52, borderRadius: 14,
+              background: 'linear-gradient(135deg,#7c3aed,#a78bfa)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              color: 'white', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.02em',
+              boxShadow: '0 8px 24px rgba(124,58,237,0.35)',
+            }}>LL</div>
+            <span style={{ fontWeight: 800, fontSize: '1.3rem', color: 'var(--text)', letterSpacing: '-0.02em' }}>Local Link</span>
+          </Link>
         </div>
-        
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-              {error}
-            </div>
-          )}
-          
-          <div className="space-y-4">
+
+        {/* Glass form card */}
+        <div className="glass-form">
+          <div style={{ marginBottom: 24 }}>
+            <h1 style={{ fontSize: '1.5rem', fontWeight: 800, color: 'var(--text)', margin: '0 0 6px', letterSpacing: '-0.02em' }}>
+              Welcome back
+            </h1>
+            <p style={{ color: 'var(--muted)', fontSize: '0.9rem', margin: 0 }}>
+              Sign in to your Local Link account
+            </p>
+          </div>
+
+          {error && <div className="alert-error" style={{ marginBottom: 18 }}>{error}</div>}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {/* Email */}
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: '0.86rem', color: 'var(--text)' }}>
                 Email address
               </label>
               <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                className="input-field mt-1"
-                placeholder="Enter your email"
+                name="email" type="email" required autoComplete="email"
+                placeholder="you@example.com"
+                className="input-field"
                 value={formData.email}
                 onChange={handleChange}
               />
             </div>
-            
+
+            {/* Password */}
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
+              <label style={{ display: 'block', fontWeight: 600, marginBottom: 6, fontSize: '0.86rem', color: 'var(--text)' }}>
                 Password
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-                className="input-field mt-1"
-                placeholder="Enter your password"
-                value={formData.password}
-                onChange={handleChange}
-              />
+              <div style={{ position: 'relative' }}>
+                <input
+                  name="password" type={showPassword ? 'text' : 'password'} required autoComplete="current-password"
+                  placeholder="Your password"
+                  className="input-field"
+                  style={{ paddingRight: 44 }}
+                  value={formData.password}
+                  onChange={handleChange}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(v => !v)}
+                  style={{
+                    position: 'absolute', right: 12, top: '50%', transform: 'translateY(-50%)',
+                    background: 'none', border: 'none', cursor: 'pointer', color: 'var(--muted)', padding: 4,
+                  }}
+                >
+                  {showPassword ? (
+                    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  ) : (
+                    <svg width="17" height="17" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
-              />
-              <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-900">
+
+            {/* Remember / forgot */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: 'pointer', fontSize: '0.86rem', color: 'var(--text-secondary)', fontWeight: 500 }}>
+                <input type="checkbox" style={{ accentColor: 'var(--accent)', width: 15, height: 15 }} />
                 Remember me
               </label>
+              <a href="#" style={{ fontSize: '0.86rem', fontWeight: 600, color: 'var(--accent)', textDecoration: 'none' }}
+                onMouseEnter={e => e.currentTarget.style.color = 'var(--accent-600)'}
+                onMouseLeave={e => e.currentTarget.style.color = 'var(--accent)'}
+              >Forgot password?</a>
             </div>
-            
-            <div className="text-sm">
-              <a href="#" className="font-medium text-primary-600 hover:text-primary-500">
-                Forgot your password?
-              </a>
-            </div>
-          </div>
-          
-          <div>
+
+            {/* Submit */}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="group relative w-full flex justify-center py-3 px-4 border border-transparent text-sm font-medium rounded-lg text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-200"
+              className="btn-primary"
+              style={{ width: '100%', padding: '13px', fontSize: '0.96rem', borderRadius: 12, marginTop: 4 }}
             >
               {isSubmitting ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  Signing in...
-                </div>
-              ) : (
-                'Sign in'
-              )}
+                <>
+                  <span style={{ width: 16, height: 16, border: '2px solid rgba(255,255,255,0.4)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.7s linear infinite', flexShrink: 0 }} />
+                  Signing in…
+                </>
+              ) : 'Sign In'}
             </button>
-          </div>
-          
-          <div className="text-center">
-            <p className="text-sm text-gray-600">
-              Don't have an account?{' '}
-              <Link to="/register" className="font-medium text-primary-600 hover:text-primary-500">
-                Sign up here
-              </Link>
-            </p>
-          </div>
-        </form>
-        
-        {/* Demo Credentials */}
-        <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-          <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Credentials</h3>
-          <div className="text-xs text-blue-700 space-y-1">
-            <p><strong>Customer:</strong> john@example.com / Test123456</p>
-            <p><strong>Vendor:</strong> shop@example.com / Test123456</p>
-            <p><strong>Admin:</strong> admin@locallink.com / Admin@1234</p>
+          </form>
+
+          <p style={{ textAlign: 'center', marginTop: 22, fontSize: '0.88rem', color: 'var(--muted)' }}>
+            Don't have an account?{' '}
+            <Link to="/register" style={{ fontWeight: 700, color: 'var(--accent)', textDecoration: 'none' }}>Create one →</Link>
+          </p>
+        </div>
+
+        {/* Demo credentials */}
+        <div style={{
+          marginTop: 16, padding: '14px 18px', borderRadius: 12,
+          background: 'rgba(124,58,237,0.05)', border: '1px solid rgba(124,58,237,0.12)',
+        }}>
+          <p style={{ fontWeight: 700, fontSize: '0.8rem', color: 'var(--accent)', marginBottom: 6 }}>🔑 Demo Credentials</p>
+          <div style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <span><strong>Customer:</strong> john@example.com / Test123456</span>
+            <span><strong>Vendor:</strong> shop@example.com / Test123456</span>
+            <span><strong>Admin:</strong> admin@locallink.com / Admin@1234</span>
           </div>
         </div>
       </div>

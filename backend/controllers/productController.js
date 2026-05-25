@@ -19,15 +19,24 @@ const getProducts = async (req, res) => {
     // If location provided, find vendors within radius first
     let vendorIds = null;
     if (lat && lng) {
-      const nearbyVendors = await VendorProfile.find({
-        location: {
-          $nearSphere: {
-            $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
-            $maxDistance: parseFloat(radius) * 1000 // convert km to meters
+      try {
+        const nearbyVendors = await VendorProfile.find({
+          location: {
+            $nearSphere: {
+              $geometry: { type: 'Point', coordinates: [parseFloat(lng), parseFloat(lat)] },
+              $maxDistance: parseFloat(radius) * 1000 // convert km to meters
+            }
           }
+        }).select('_id');
+        // Only filter by vendor if we actually found some nearby — an empty array would
+        // produce { $in: [] } which matches NO documents, returning a blank page.
+        if (nearbyVendors.length > 0) {
+          vendorIds = nearbyVendors.map(v => v._id);
         }
-      }).select('_id');
-      vendorIds = nearbyVendors.map(v => v._id);
+      } catch (geoErr) {
+        // If 2dsphere index isn't ready or coords are invalid, fall through without geo filter
+        console.warn('Geo query failed, showing all products:', geoErr.message);
+      }
     }
 
     const filter = { isAvailable: true, status: 'active' };
@@ -68,6 +77,7 @@ const getProducts = async (req, res) => {
 
     const total = await Product.countDocuments(filter);
 
+    const locationRequested = !!(lat && lng);
     res.json({
       success: true,
       data: {
@@ -78,7 +88,12 @@ const getProducts = async (req, res) => {
           total,
           hasNext: skip + products.length < total,
           hasPrev: parseInt(page) > 1
-        }
+        },
+        // locationFiltered: results are scoped to nearby vendors
+        // locationFallback: location was given but 0 vendors matched → showing all
+        locationFiltered: locationRequested && vendorIds !== null,
+        locationFallback: locationRequested && vendorIds === null,
+        radiusKm: locationRequested ? parseFloat(radius) : null,
       }
     });
   } catch (error) {
